@@ -25,7 +25,7 @@ object DatabaseModule {
             context,
             ChronicleDatabase::class.java,
             Constants.DATABASE_NAME
-        ).fallbackToDestructiveMigration(dropAllTables = true).build()
+        ).fallbackToDestructiveMigration().build()
     }
 
     @Provides
