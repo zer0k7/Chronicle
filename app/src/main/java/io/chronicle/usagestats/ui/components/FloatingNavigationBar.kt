@@ -8,11 +8,18 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -87,7 +94,7 @@ fun FloatingNavigationBar(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                items.forEach { item ->
+                for (item in items) {
                     val isSelected = currentRoute == item.route
                     val animatedBgColor by animateColorAsState(
                         targetValue = if (isSelected) {
@@ -163,21 +170,21 @@ fun ChronicleNavigationRail(
 
     Surface(
         modifier = modifier
-            .androidx.compose.foundation.layout.fillMaxHeight()
+            .fillMaxHeight()
             .width(84.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 4.dp
     ) {
         Column(
             modifier = Modifier
-                .androidx.compose.foundation.layout.fillMaxHeight()
-                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
-                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                .fillMaxHeight()
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .windowInsetsPadding(WindowInsets.navigationBars)
                 .padding(vertical = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
         ) {
-            items.forEach { item ->
+            for (item in items) {
                 val isSelected = currentRoute == item.route
                 val animatedBgColor by animateColorAsState(
                     targetValue = if (isSelected) {
