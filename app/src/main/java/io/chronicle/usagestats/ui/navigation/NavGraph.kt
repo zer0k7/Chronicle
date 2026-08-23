@@ -3,7 +3,9 @@ package io.chronicle.usagestats.ui.navigation
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.windowsizeclass.WindowWidthSizeClass
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -14,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import io.chronicle.usagestats.ui.components.ChronicleNavigationRail
 import io.chronicle.usagestats.ui.components.FloatingNavigationBar
 import io.chronicle.usagestats.ui.onboarding.OnboardingScreen
 import io.chronicle.usagestats.ui.report.ReportScreen
@@ -24,7 +27,8 @@ import io.chronicle.usagestats.ui.timeline.TimelineScreen
 @Composable
 fun ChronicleNavGraph(
     navController: NavHostController,
-    isOnboardingCompleted: Boolean
+    isOnboardingCompleted: Boolean,
+    widthSizeClass: WindowWidthSizeClass = WindowWidthSizeClass.Compact
 ) {
     val startDestination = if (isOnboardingCompleted) Screen.Timeline.route else Screen.Splash.route
 
@@ -36,59 +40,12 @@ fun ChronicleNavGraph(
         Screen.Settings.route
     )
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        NavHost(
-            navController = navController,
-            startDestination = startDestination,
-            enterTransition = { fadeIn() },
-            exitTransition = { fadeOut() }
-        ) {
-            composable(Screen.Splash.route) {
-                currentRoute = Screen.Splash.route
-                SplashScreen(
-                    onSplashFinished = {
-                        if (isOnboardingCompleted) {
-                            navController.navigate(Screen.Timeline.route) {
-                                popUpTo(Screen.Splash.route) { inclusive = true }
-                            }
-                        } else {
-                            navController.navigate(Screen.Onboarding.route) {
-                                popUpTo(Screen.Splash.route) { inclusive = true }
-                            }
-                        }
-                    }
-                )
-            }
+    val isExpandedOrMedium = widthSizeClass != WindowWidthSizeClass.Compact
 
-            composable(Screen.Onboarding.route) {
-                currentRoute = Screen.Onboarding.route
-                OnboardingScreen(
-                    onFinish = {
-                        navController.navigate(Screen.Timeline.route) {
-                            popUpTo(Screen.Onboarding.route) { inclusive = true }
-                        }
-                    }
-                )
-            }
-
-            composable(Screen.Timeline.route) {
-                currentRoute = Screen.Timeline.route
-                TimelineScreen()
-            }
-
-            composable(Screen.Report.route) {
-                currentRoute = Screen.Report.route
-                ReportScreen()
-            }
-
-            composable(Screen.Settings.route) {
-                currentRoute = Screen.Settings.route
-                SettingsScreen()
-            }
-        }
-
-        if (showNavBar) {
-            FloatingNavigationBar(
+    if (isExpandedOrMedium && showNavBar) {
+        // Large / Foldable / Tablet two-pane layout with Navigation Rail
+        Row(modifier = Modifier.fillMaxSize()) {
+            ChronicleNavigationRail(
                 currentRoute = currentRoute,
                 onNavigate = { route ->
                     navController.navigate(route) {
@@ -97,9 +54,128 @@ fun ChronicleNavGraph(
                         restoreState = true
                     }
                     currentRoute = route
-                },
-                modifier = Modifier.align(Alignment.BottomCenter)
+                }
             )
+
+            Box(modifier = Modifier.weight(1f)) {
+                NavHost(
+                    navController = navController,
+                    startDestination = startDestination,
+                    enterTransition = { fadeIn() },
+                    exitTransition = { fadeOut() }
+                ) {
+                    composable(Screen.Splash.route) {
+                        currentRoute = Screen.Splash.route
+                        SplashScreen(
+                            onSplashFinished = {
+                                if (isOnboardingCompleted) {
+                                    navController.navigate(Screen.Timeline.route) {
+                                        popUpTo(Screen.Splash.route) { inclusive = true }
+                                    }
+                                } else {
+                                    navController.navigate(Screen.Onboarding.route) {
+                                        popUpTo(Screen.Splash.route) { inclusive = true }
+                                    }
+                                }
+                            }
+                        )
+                    }
+
+                    composable(Screen.Onboarding.route) {
+                        currentRoute = Screen.Onboarding.route
+                        OnboardingScreen(
+                            onFinish = {
+                                navController.navigate(Screen.Timeline.route) {
+                                    popUpTo(Screen.Onboarding.route) { inclusive = true }
+                                }
+                            }
+                        )
+                    }
+
+                    composable(Screen.Timeline.route) {
+                        currentRoute = Screen.Timeline.route
+                        TimelineScreen()
+                    }
+
+                    composable(Screen.Report.route) {
+                        currentRoute = Screen.Report.route
+                        ReportScreen()
+                    }
+
+                    composable(Screen.Settings.route) {
+                        currentRoute = Screen.Settings.route
+                        SettingsScreen()
+                    }
+                }
+            }
+        }
+    } else {
+        // Compact phone layout with floating pill bottom navigation bar
+        Box(modifier = Modifier.fillMaxSize()) {
+            NavHost(
+                navController = navController,
+                startDestination = startDestination,
+                enterTransition = { fadeIn() },
+                exitTransition = { fadeOut() }
+            ) {
+                composable(Screen.Splash.route) {
+                    currentRoute = Screen.Splash.route
+                    SplashScreen(
+                        onSplashFinished = {
+                            if (isOnboardingCompleted) {
+                                navController.navigate(Screen.Timeline.route) {
+                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                }
+                            } else {
+                                navController.navigate(Screen.Onboarding.route) {
+                                    popUpTo(Screen.Splash.route) { inclusive = true }
+                                }
+                            }
+                        }
+                    )
+                }
+
+                composable(Screen.Onboarding.route) {
+                    currentRoute = Screen.Onboarding.route
+                    OnboardingScreen(
+                        onFinish = {
+                            navController.navigate(Screen.Timeline.route) {
+                                popUpTo(Screen.Onboarding.route) { inclusive = true }
+                            }
+                        }
+                    )
+                }
+
+                composable(Screen.Timeline.route) {
+                    currentRoute = Screen.Timeline.route
+                    TimelineScreen()
+                }
+
+                composable(Screen.Report.route) {
+                    currentRoute = Screen.Report.route
+                    ReportScreen()
+                }
+
+                composable(Screen.Settings.route) {
+                    currentRoute = Screen.Settings.route
+                    SettingsScreen()
+                }
+            }
+
+            if (showNavBar) {
+                FloatingNavigationBar(
+                    currentRoute = currentRoute,
+                    onNavigate = { route ->
+                        navController.navigate(route) {
+                            popUpTo(Screen.Timeline.route) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                        currentRoute = route
+                    },
+                    modifier = Modifier.align(Alignment.BottomCenter)
+                )
+            }
         }
     }
 }

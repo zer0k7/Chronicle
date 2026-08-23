@@ -39,7 +39,7 @@ class UsageStatsRepositoryImpl(
             return@withContext
         }
 
-        val usageMap = aggregateUsageEvents(startOfDay, queryEnd)
+        val usageMap = aggregateUsageData(startOfDay, queryEnd, endOfDay)
 
         // Query existing records to preserve any removed apps data
         val existingRecords = usageDao.getUsageForDateDirect(startOfDay).associateBy { it.packageName }
@@ -262,12 +262,14 @@ class UsageStatsRepositoryImpl(
 
     override suspend fun getTodayTotalScreenTimeMillis(): Long = withContext(Dispatchers.IO) {
         val todayStart = DateTimeUtils.getStartOfDay()
+        syncUsageForDate(todayStart)
         val summary = usageDao.getSummaryForDate(todayStart)
         summary?.totalScreenTimeMillis ?: 0L
     }
 
     override suspend fun getTodaySummary(): DailyUsageSummary = withContext(Dispatchers.IO) {
         val todayStart = DateTimeUtils.getStartOfDay()
+        syncUsageForDate(todayStart)
         val records = usageDao.getUsageForDateDirect(todayStart)
         val totalTime = records.sumOf { it.foregroundTimeMillis }
         val top = records.maxByOrNull { it.foregroundTimeMillis }
@@ -288,60 +290,69 @@ class UsageStatsRepositoryImpl(
         var lastTimeUsedMillis: Long = 0L
     )
 
-    private fun aggregateUsageEvents(startTime: Long, endTime: Long): Map<String, ParsedUsage> {
+    private fun aggregateUsageData(startTime: Long, queryEnd: Long, endTime: Long): Map<String, ParsedUsage> {
         val manager = usageStatsManager ?: return emptyMap()
-        val events = manager.queryEvents(startTime, endTime) ?: return emptyMap()
-
-        val event = UsageEvents.Event()
         val usageMap = mutableMapOf<String, ParsedUsage>()
-        val startTimes = mutableMapOf<String, Long>()
 
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            val pkg = event.packageName ?: continue
+        // 1. Primary Baseline: Query INTERVAL_DAILY usage statistics for the entire day span
+        val stats = manager.queryUsageStats(UsageStatsManager.INTERVAL_DAILY, startTime, endTime)
+        stats?.forEach { stat ->
+            val pkg = stat.packageName ?: return@forEach
             val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
-
-            when (event.eventType) {
-                UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    startTimes[pkg] = event.timeStamp
-                    parsed.launchCount++
-                    if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                        parsed.lastTimeUsedMillis = event.timeStamp
-                    }
-                }
-                UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val resumedAt = startTimes.remove(pkg)
-                    if (resumedAt != null && event.timeStamp > resumedAt) {
-                        val duration = event.timeStamp - resumedAt
-                        parsed.totalForegroundMillis += duration
-                    }
-                    if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                        parsed.lastTimeUsedMillis = event.timeStamp
-                    }
-                }
-            }
+            parsed.totalForegroundMillis = maxOf(parsed.totalForegroundMillis, stat.totalTimeInForeground)
+            parsed.lastTimeUsedMillis = maxOf(parsed.lastTimeUsedMillis, stat.lastTimeUsed)
         }
 
-        // Account for any app currently in foreground at the query boundary
-        val now = System.currentTimeMillis()
-        val effectiveEnd = if (endTime > now) now else endTime
-        for ((pkg, startStamp) in startTimes) {
-            if (effectiveEnd > startStamp) {
+        // 2. Query Event Stream to capture launch counts and live in-progress sessions
+        val events = manager.queryEvents(startTime, queryEnd)
+        if (events != null) {
+            val event = UsageEvents.Event()
+            val startTimes = mutableMapOf<String, Long>()
+            val eventDurations = mutableMapOf<String, Long>()
+
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event)
+                val pkg = event.packageName ?: continue
                 val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
-                parsed.totalForegroundMillis += (effectiveEnd - startStamp)
-            }
-        }
 
-        // Fallback or blend with queryUsageStats if event stream was sparse
-        if (usageMap.isEmpty()) {
-            val stats = manager.queryUsageStats(UsageStatsManager.INTERVAL_BEST, startTime, endTime)
-            stats?.forEach { stat ->
-                if (stat.totalTimeInForeground > 0) {
-                    val parsed = usageMap.getOrPut(stat.packageName) { ParsedUsage() }
-                    parsed.totalForegroundMillis = maxOf(parsed.totalForegroundMillis, stat.totalTimeInForeground)
-                    parsed.lastTimeUsedMillis = maxOf(parsed.lastTimeUsedMillis, stat.lastTimeUsed)
+                when (event.eventType) {
+                    UsageEvents.Event.ACTIVITY_RESUMED -> {
+                        startTimes[pkg] = event.timeStamp
+                        parsed.launchCount++
+                        if (event.timeStamp > parsed.lastTimeUsedMillis) {
+                            parsed.lastTimeUsedMillis = event.timeStamp
+                        }
+                    }
+                    UsageEvents.Event.ACTIVITY_PAUSED,
+                    UsageEvents.Event.ACTIVITY_STOPPED -> {
+                        val resumedAt = startTimes.remove(pkg)
+                        if (resumedAt != null && event.timeStamp > resumedAt) {
+                            val duration = event.timeStamp - resumedAt
+                            val existing = eventDurations.getOrDefault(pkg, 0L)
+                            eventDurations[pkg] = existing + duration
+                        }
+                        if (event.timeStamp > parsed.lastTimeUsedMillis) {
+                            parsed.lastTimeUsedMillis = event.timeStamp
+                        }
+                    }
                 }
+            }
+
+            // Capture currently in-progress active sessions (app still in foreground)
+            val now = System.currentTimeMillis()
+            val effectiveEnd = if (queryEnd > now) now else queryEnd
+            for ((pkg, startStamp) in startTimes) {
+                if (effectiveEnd > startStamp) {
+                    val ongoingDuration = effectiveEnd - startStamp
+                    val existing = eventDurations.getOrDefault(pkg, 0L)
+                    eventDurations[pkg] = existing + ongoingDuration
+                }
+            }
+
+            // Reconcile stats and event durations so no session is lost
+            for ((pkg, eventDuration) in eventDurations) {
+                val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
+                parsed.totalForegroundMillis = maxOf(parsed.totalForegroundMillis, eventDuration)
             }
         }
 

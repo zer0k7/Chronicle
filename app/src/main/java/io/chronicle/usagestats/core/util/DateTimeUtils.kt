@@ -30,13 +30,13 @@ object DateTimeUtils {
     }
 
     fun getStartOfDay(epochMillis: Long = System.currentTimeMillis()): Long {
-        val zonedDateTime = toZonedDateTime(epochMillis)
-        return zonedDateTime.toLocalDate().atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
+        val date = toZonedDateTime(epochMillis).toLocalDate()
+        return date.atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getEndOfDay(epochMillis: Long = System.currentTimeMillis()): Long {
-        val zonedDateTime = toZonedDateTime(epochMillis)
-        return zonedDateTime.toLocalDate().atTime(LocalTime.MAX).atZone(IST_ZONE_ID).toInstant().toEpochMilli()
+        val date = toZonedDateTime(epochMillis).toLocalDate()
+        return date.plusDays(1).atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getStartOfWeek(epochMillis: Long = System.currentTimeMillis()): Long {

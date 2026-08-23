@@ -148,3 +148,75 @@ fun FloatingNavigationBar(
         }
     }
 }
+
+@Composable
+fun ChronicleNavigationRail(
+    currentRoute: String,
+    onNavigate: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val items = listOf(
+        NavigationItem.Timeline,
+        NavigationItem.Report,
+        NavigationItem.Settings
+    )
+
+    Surface(
+        modifier = modifier
+            .androidx.compose.foundation.layout.fillMaxHeight()
+            .width(84.dp),
+        color = MaterialTheme.colorScheme.surface,
+        tonalElevation = 4.dp
+    ) {
+        Column(
+            modifier = Modifier
+                .androidx.compose.foundation.layout.fillMaxHeight()
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.statusBars)
+                .windowInsetsPadding(androidx.compose.foundation.layout.WindowInsets.navigationBars)
+                .padding(vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically)
+        ) {
+            items.forEach { item ->
+                val isSelected = currentRoute == item.route
+                val animatedBgColor by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = 0.18f)
+                    } else {
+                        Color.Transparent
+                    },
+                    animationSpec = tween(durationMillis = 250),
+                    label = "rail_item_bg"
+                )
+
+                val animatedContentColor by animateColorAsState(
+                    targetValue = if (isSelected) {
+                        MaterialTheme.colorScheme.primary
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    animationSpec = tween(durationMillis = 250),
+                    label = "rail_item_content"
+                )
+
+                Surface(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(CircleShape)
+                        .clickable { if (!isSelected) onNavigate(item.route) },
+                    color = animatedBgColor,
+                    shape = CircleShape
+                ) {
+                    Box(contentAlignment = Alignment.Center) {
+                        Icon(
+                            imageVector = item.icon,
+                            contentDescription = stringResource(item.titleRes),
+                            tint = animatedContentColor,
+                            modifier = Modifier.size(26.dp)
+                        )
+                    }
+                }
+            }
+        }
+    }
+}

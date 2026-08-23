@@ -30,6 +30,7 @@ class DateTimeUtilsTest {
         val endOfDay = DateTimeUtils.getEndOfDay(now)
 
         assertTrue(endOfDay > startOfDay)
+        assertEquals(24 * 60 * 60 * 1000L, endOfDay - startOfDay)
 
         val startZoned = DateTimeUtils.toZonedDateTime(startOfDay)
         assertEquals(0, startZoned.hour)
@@ -37,9 +38,9 @@ class DateTimeUtilsTest {
         assertEquals(0, startZoned.second)
 
         val endZoned = DateTimeUtils.toZonedDateTime(endOfDay)
-        assertEquals(23, endZoned.hour)
-        assertEquals(59, endZoned.minute)
-        assertEquals(59, endZoned.second)
+        assertEquals(0, endZoned.hour)
+        assertEquals(0, endZoned.minute)
+        assertEquals(0, endZoned.second)
     }
 
     @Test
