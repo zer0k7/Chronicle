@@ -1,0 +1,28 @@
+package io.chronicle.usagestats.domain.repository
+
+import io.chronicle.usagestats.domain.model.AppUsageInfo
+import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.TimelineData
+import io.chronicle.usagestats.domain.model.TimelinePeriod
+import kotlinx.coroutines.flow.Flow
+
+interface UsageRepository {
+
+    suspend fun syncUsageForDate(dateStartEpochMillis: Long)
+
+    suspend fun syncUsageForRange(startDateEpochMillis: Long, endDateEpochMillis: Long)
+
+    fun getDailyUsage(dateStartEpochMillis: Long): Flow<DailyUsageSummary>
+
+    fun getRangeUsage(startDateEpochMillis: Long, endDateEpochMillis: Long): Flow<List<AppUsageInfo>>
+
+    fun getTimelineData(period: TimelinePeriod, referenceEpochMillis: Long): Flow<TimelineData>
+
+    fun getRemovedAppsUsage(): Flow<List<AppUsageInfo>>
+
+    suspend fun detectAndMarkRemovedApps()
+
+    suspend fun getTodayTotalScreenTimeMillis(): Long
+
+    suspend fun getTodaySummary(): DailyUsageSummary
+}

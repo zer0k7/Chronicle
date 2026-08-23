@@ -1,0 +1,39 @@
+# Built application files
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Gradle files
+.gradle/
+build/
+app/build/
+
+# Local configuration & Keystores
+local.properties
+keystore.properties
+*.jks
+*.keystore
+*.pfx
+
+# Android Studio / IntelliJ IDEA
+.idea/
+.idea/caches/
+.idea/libraries/
+.idea/modules.xml
+.idea/workspace.xml
+*.iml
+captures/
+.externalNativeBuild/
+.cxx/
+
+# OS Specific
+.DS_Store
+Thumbs.db
+
+# AI Prompts and Specification Files
+APP_SPEC.md
+VIBE_PROMPT.md
+AGENTS.md
+CLAUDE.md
+*.tmp
