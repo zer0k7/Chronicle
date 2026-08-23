@@ -47,11 +47,18 @@ android {
             val releaseKeyPassword = System.getenv("KEY_PASSWORD")
                 ?: keystoreProperties.getProperty("keyPassword")
 
-            if (releaseKeyStore != null && file(releaseKeyStore).exists()) {
-                storeFile = file(releaseKeyStore)
-                storePassword = releaseStorePassword
-                keyAlias = releaseKeyAlias
-                keyPassword = releaseKeyPassword
+            if (!releaseKeyStore.isNullOrBlank() &&
+                !releaseStorePassword.isNullOrBlank() &&
+                !releaseKeyAlias.isNullOrBlank() &&
+                !releaseKeyPassword.isNullOrBlank()
+            ) {
+                val ksFile = file(releaseKeyStore)
+                if (ksFile.exists() && ksFile.length() > 0) {
+                    storeFile = ksFile
+                    storePassword = releaseStorePassword
+                    keyAlias = releaseKeyAlias
+                    keyPassword = releaseKeyPassword
+                }
             }
         }
     }
