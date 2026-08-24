@@ -33,37 +33,20 @@ jobs:
         id: tag_version
         run: echo "TAG_NAME=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
 
-      - name: Prepare Release Keystore
+      - name: Decode Release Keystore
         env:
           KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
-          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
-          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
         run: |
-          mkdir -p /tmp/keystore
-          if [ -n "$KEYSTORE_BASE64" ]; then
-            echo "Decoding provided release keystore secret..."
-            echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/keystore/release.keystore
-            echo "KEYSTORE_PATH=/tmp/keystore/release.keystore" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=$KEYSTORE_PASSWORD" >> $GITHUB_ENV
-            echo "KEY_ALIAS=$KEY_ALIAS" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=$KEY_PASSWORD" >> $GITHUB_ENV
-          else
-            echo "Generating automated release signing keystore..."
-            keytool -genkeypair -v \
-              -keystore /tmp/keystore/release.keystore \
-              -alias chronicle_release \
-              -keyalg RSA \
-              -keysize 2048 \
-              -validity 10000 \
-              -storepass chroniclepass123 \
-              -keypass chroniclepass123 \
-              -dname "CN=Chronicle, OU=Android, O=Chronicle, L=Global, S=Global, C=IN"
-            echo "KEYSTORE_PATH=/tmp/keystore/release.keystore" >> $GITHUB_ENV
-            echo "KEYSTORE_PASSWORD=chroniclepass123" >> $GITHUB_ENV
-            echo "KEY_ALIAS=chronicle_release" >> $GITHUB_ENV
-            echo "KEY_PASSWORD=chroniclepass123" >> $GITHUB_ENV
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "KEYSTORE_BASE64 secret is not set. Cannot build a signed release."
+            echo "Please add the base64-encoded keystore as a GitHub secret named KEYSTORE_BASE64."
+            exit 1
           fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > /tmp/chronicle-release.jks
+          echo "KEYSTORE_PATH=/tmp/chronicle-release.jks" >> $GITHUB_ENV
+          echo "KEYSTORE_PASSWORD=${{ secrets.KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "KEY_ALIAS=${{ secrets.KEY_ALIAS }}" >> $GITHUB_ENV
+          echo "KEY_PASSWORD=${{ secrets.KEY_PASSWORD }}" >> $GITHUB_ENV
 
       - name: Build Signed Release APK
         run: ./gradlew assembleRelease

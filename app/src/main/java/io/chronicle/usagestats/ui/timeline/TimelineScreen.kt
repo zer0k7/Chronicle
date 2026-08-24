@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -52,9 +53,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import io.chronicle.usagestats.R
 import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.domain.model.AppUsageInfo
+import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.ui.components.AppIconView
@@ -179,7 +185,7 @@ fun TimelineScreen(
             }
 
             val dateLabel = timelineData?.let {
-                DateTimeUtils.formatDateRange(it.startEpochMillis, it.endEpochMillis)
+                DateTimeUtils.formatPeriodLabel(selectedPeriod, it.startEpochMillis, it.endEpochMillis)
             } ?: DateTimeUtils.formatDate(referenceDate)
 
             Text(
@@ -243,6 +249,27 @@ fun TimelineScreen(
                 // Summary Card
                 item {
                     TimelineSummaryCard(data)
+                }
+
+                // Weekly Bar Chart (only in Week view)
+                if (selectedPeriod == TimelinePeriod.WEEK && data.dailySummaries.isNotEmpty()) {
+                    item {
+                        ChronicleCard(modifier = Modifier.fillMaxWidth()) {
+                            Column {
+                                Text(
+                                    text = stringResource(R.string.timeline_weekly_overview),
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                WeeklyBarChart(
+                                    dailySummaries = data.dailySummaries,
+                                    referenceDate = referenceDate
+                                )
+                            }
+                        }
+                    }
                 }
 
                 // Top Apps List Header
@@ -391,3 +418,111 @@ private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
         }
     }
 }
+
+@Composable
+private fun WeeklyBarChart(
+    dailySummaries: List<DailyUsageSummary>,
+    referenceDate: Long,
+    modifier: Modifier = Modifier
+) {
+    val maxDuration = dailySummaries.maxOfOrNull { it.totalScreenTimeMillis } ?: 1L
+    // Round up to nearest 2h for y-axis
+    val twoHoursMs = 2 * 60 * 60 * 1000L
+    val yAxisMax = ((maxDuration / twoHoursMs) + 1) * twoHoursMs
+    val yAxisSteps = (yAxisMax / twoHoursMs).toInt().coerceIn(1, 6)
+
+    val currentDayOfWeek = DateTimeUtils.toZonedDateTime(referenceDate).dayOfWeek
+    val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
+    val daysOfWeek = java.time.DayOfWeek.entries
+
+    // Map summaries by day of week
+    val summaryByDay = dailySummaries.associateBy {
+        DateTimeUtils.toZonedDateTime(it.dateEpochMillis).dayOfWeek
+    }
+
+    val primaryColor = MaterialTheme.colorScheme.primary
+    val mutedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
+    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+
+    val textPaint = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.GRAY
+            textSize = 28f
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
+        }
+    }
+
+    val yAxisPaint = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.GRAY
+            textSize = 24f
+            textAlign = android.graphics.Paint.Align.RIGHT
+            isAntiAlias = true
+        }
+    }
+
+    Canvas(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .padding(start = 40.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+    ) {
+        val chartWidth = size.width
+        val chartHeight = size.height - 40f // leave room for day labels
+        val barWidth = chartWidth / 7f * 0.6f
+        val barSpacing = chartWidth / 7f
+
+        // Draw horizontal grid lines and y-axis labels
+        for (i in 0..yAxisSteps) {
+            val y = chartHeight - (chartHeight * i / yAxisSteps)
+            drawLine(
+                color = gridColor,
+                start = Offset(0f, y),
+                end = Offset(chartWidth, y),
+                strokeWidth = 1f
+            )
+            val hours = (yAxisMax * i / yAxisSteps) / (60 * 60 * 1000L)
+            drawContext.canvas.nativeCanvas.drawText(
+                "${hours}h",
+                -8f,
+                y + 8f,
+                yAxisPaint
+            )
+        }
+
+        // Draw bars
+        for (i in daysOfWeek.indices) {
+            val dayOfWeek = daysOfWeek[i]
+            val summary = summaryByDay[dayOfWeek]
+            val duration = summary?.totalScreenTimeMillis ?: 0L
+            val barHeight = if (yAxisMax > 0) {
+                (duration.toFloat() / yAxisMax) * chartHeight
+            } else 0f
+
+            val x = i * barSpacing + (barSpacing - barWidth) / 2f
+            val isCurrentDay = dayOfWeek == currentDayOfWeek
+            val barColor = if (isCurrentDay) primaryColor else mutedColor
+
+            // Bar
+            if (barHeight > 0f) {
+                drawRoundRect(
+                    color = barColor,
+                    topLeft = Offset(x, chartHeight - barHeight),
+                    size = Size(barWidth, barHeight),
+                    cornerRadius = CornerRadius(6f, 6f)
+                )
+            }
+
+            // Day label below
+            drawContext.canvas.nativeCanvas.drawText(
+                dayLabels[i],
+                x + barWidth / 2f,
+                chartHeight + 30f,
+                textPaint
+            )
+        }
+    }
+}
+

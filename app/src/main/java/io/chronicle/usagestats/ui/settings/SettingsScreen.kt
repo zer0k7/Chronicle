@@ -69,6 +69,8 @@ fun SettingsScreen(
 ) {
     val context = LocalContext.current
     val settings by viewModel.userSettings.collectAsStateWithLifecycle()
+    val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+    val isUpdateDialogVisible by viewModel.isUpdateDialogVisible.collectAsStateWithLifecycle()
     var showTimePicker by remember { mutableStateOf(false) }
 
     if (showTimePicker) {
@@ -266,13 +268,22 @@ fun SettingsScreen(
         }
 
         item {
+            val versionSubtitle = when (val state = updateState) {
+                is io.chronicle.usagestats.core.updater.UpdateState.Checking -> stringResource(R.string.update_checking)
+                is io.chronicle.usagestats.core.updater.UpdateState.UpdateAvailable -> stringResource(R.string.update_available_title) + " (v${state.info.latestVersion})"
+                is io.chronicle.usagestats.core.updater.UpdateState.Downloading -> stringResource(R.string.update_downloading, state.progress)
+                is io.chronicle.usagestats.core.updater.UpdateState.ReadyToInstall -> stringResource(R.string.update_ready_title)
+                else -> stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME)
+            }
+            SettingsClickRow(
+                title = stringResource(R.string.update_check_button),
+                value = versionSubtitle,
+                onClick = { viewModel.checkForUpdates() }
+            )
+        }
+
+        item {
             Column(modifier = Modifier.padding(horizontal = 20.dp, vertical = 8.dp)) {
-                Text(
-                    text = stringResource(R.string.settings_app_version, BuildConfig.VERSION_NAME),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Spacer(Modifier.height(4.dp))
                 Text(
                     text = stringResource(R.string.settings_privacy_note),
                     style = MaterialTheme.typography.bodySmall,

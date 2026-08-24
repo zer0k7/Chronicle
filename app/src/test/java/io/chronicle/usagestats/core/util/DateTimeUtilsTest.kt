@@ -57,9 +57,9 @@ class DateTimeUtilsTest {
         assertEquals(0, startZoned.minute)
 
         val endZoned = DateTimeUtils.toZonedDateTime(endOfWeek)
-        assertEquals(DayOfWeek.SUNDAY, endZoned.dayOfWeek)
-        assertEquals(23, endZoned.hour)
-        assertEquals(59, endZoned.minute)
+        assertEquals(DayOfWeek.MONDAY, endZoned.dayOfWeek)
+        assertEquals(0, endZoned.hour)
+        assertEquals(0, endZoned.minute)
     }
 
     @Test
@@ -74,7 +74,9 @@ class DateTimeUtilsTest {
         assertEquals(1, startZoned.dayOfMonth)
 
         val endZoned = DateTimeUtils.toZonedDateTime(endOfMonth)
-        assertTrue(endZoned.dayOfMonth in 28..31)
+        assertEquals(1, endZoned.dayOfMonth)
+        assertEquals(0, endZoned.hour)
+        assertEquals(0, endZoned.minute)
     }
 
     @Test
@@ -90,18 +92,50 @@ class DateTimeUtilsTest {
         assertEquals(1, startZoned.monthValue)
 
         val endZoned = DateTimeUtils.toZonedDateTime(endOfYear)
-        assertEquals(31, endZoned.dayOfMonth)
-        assertEquals(12, endZoned.monthValue)
+        assertEquals(1, endZoned.dayOfMonth)
+        assertEquals(1, endZoned.monthValue)
+        assertEquals(0, endZoned.hour)
+        assertEquals(0, endZoned.minute)
     }
 
     @Test
-    fun testFormatTime() {
-        val formattedAm = DateTimeUtils.formatTime(9, 15)
-        assertTrue(formattedAm.contains("09:15") || formattedAm.contains("9:15"))
-        assertTrue(formattedAm.contains("AM"))
+    fun testFormatPeriodLabel() {
+        // Test DAY format
+        val now = System.currentTimeMillis()
+        val startOfDay = DateTimeUtils.getStartOfDay(now)
+        val endOfDay = DateTimeUtils.getEndOfDay(now)
+        val dayLabel = DateTimeUtils.formatPeriodLabel(
+            io.chronicle.usagestats.domain.model.TimelinePeriod.DAY,
+            startOfDay,
+            endOfDay
+        )
+        assertTrue(dayLabel.isNotEmpty())
+        // Should NOT contain a dash indicating range
+        org.junit.Assert.assertFalse(dayLabel.contains(" - "))
 
-        val formattedPm = DateTimeUtils.formatTime(21, 30)
-        assertTrue(formattedPm.contains("09:30") || formattedPm.contains("9:30"))
-        assertTrue(formattedPm.contains("PM"))
+        // Test WEEK format
+        val startOfWeek = DateTimeUtils.getStartOfWeek(now)
+        val endOfWeek = DateTimeUtils.getEndOfWeek(now)
+        val weekLabel = DateTimeUtils.formatPeriodLabel(
+            io.chronicle.usagestats.domain.model.TimelinePeriod.WEEK,
+            startOfWeek,
+            endOfWeek
+        )
+        assertTrue(weekLabel.contains(" - "))
+    }
+
+    @Test
+    fun testGetDaysInRange() {
+        val now = System.currentTimeMillis()
+        val startOfDay = DateTimeUtils.getStartOfDay(now)
+        val endOfDay = DateTimeUtils.getEndOfDay(now)
+        val singleDayList = DateTimeUtils.getDaysInRange(startOfDay, endOfDay)
+        assertEquals(1, singleDayList.size)
+
+        val startOfWeek = DateTimeUtils.getStartOfWeek(now)
+        val endOfWeek = DateTimeUtils.getEndOfWeek(now)
+        val weekDaysList = DateTimeUtils.getDaysInRange(startOfWeek, endOfWeek)
+        assertEquals(7, weekDaysList.size)
     }
 }
+

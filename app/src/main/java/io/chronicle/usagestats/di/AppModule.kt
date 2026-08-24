@@ -87,4 +87,12 @@ object AppModule {
     ): ExportReportImageUseCase {
         return ExportReportImageUseCase(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideAppUpdateManager(
+        @ApplicationContext context: Context
+    ): io.chronicle.usagestats.core.updater.AppUpdateManager {
+        return io.chronicle.usagestats.core.updater.AppUpdateManager(context)
+    }
 }

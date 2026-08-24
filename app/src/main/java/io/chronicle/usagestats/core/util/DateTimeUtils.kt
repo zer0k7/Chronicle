@@ -1,5 +1,6 @@
 package io.chronicle.usagestats.core.util
 
+import io.chronicle.usagestats.domain.model.TimelinePeriod
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
@@ -20,6 +21,7 @@ object DateTimeUtils {
     private val YEAR_FORMATTER = DateTimeFormatter.ofPattern("yyyy", Locale.ENGLISH)
     private val TIME_FORMATTER = DateTimeFormatter.ofPattern("hh:mm a", Locale.ENGLISH)
     private val TIME_24_FORMATTER = DateTimeFormatter.ofPattern("HH:mm", Locale.ENGLISH)
+    private val DAY_LABEL_FORMATTER = DateTimeFormatter.ofPattern("EEE, d MMM yyyy", Locale.ENGLISH)
 
     fun nowInIst(): ZonedDateTime {
         return ZonedDateTime.now(IST_ZONE_ID)
@@ -41,38 +43,38 @@ object DateTimeUtils {
 
     fun getStartOfWeek(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val monday = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val monday = zonedDateTime.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
         return monday.atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getEndOfWeek(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val sunday = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
-        return sunday.atTime(LocalTime.MAX).atZone(IST_ZONE_ID).toInstant().toEpochMilli()
+        val sunday = zonedDateTime.toLocalDate().with(TemporalAdjusters.nextOrSame(DayOfWeek.SUNDAY))
+        return sunday.plusDays(1).atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getStartOfMonth(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val firstDay = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.firstDayOfMonth())
+        val firstDay = zonedDateTime.toLocalDate().with(TemporalAdjusters.firstDayOfMonth())
         return firstDay.atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getEndOfMonth(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val lastDay = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.lastDayOfMonth())
-        return lastDay.atTime(LocalTime.MAX).atZone(IST_ZONE_ID).toInstant().toEpochMilli()
+        val lastDay = zonedDateTime.toLocalDate().with(TemporalAdjusters.lastDayOfMonth())
+        return lastDay.plusDays(1).atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getStartOfYear(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val firstDayOfYear = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.firstDayOfYear())
+        val firstDayOfYear = zonedDateTime.toLocalDate().with(TemporalAdjusters.firstDayOfYear())
         return firstDayOfYear.atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun getEndOfYear(epochMillis: Long = System.currentTimeMillis()): Long {
         val zonedDateTime = toZonedDateTime(epochMillis)
-        val lastDayOfYear = zonedDateTime.toLocalDate().`with`(TemporalAdjusters.lastDayOfYear())
-        return lastDayOfYear.atTime(LocalTime.MAX).atZone(IST_ZONE_ID).toInstant().toEpochMilli()
+        val lastDayOfYear = zonedDateTime.toLocalDate().with(TemporalAdjusters.lastDayOfYear())
+        return lastDayOfYear.plusDays(1).atStartOfDay(IST_ZONE_ID).toInstant().toEpochMilli()
     }
 
     fun formatDuration(totalMillis: Long): String {
@@ -139,12 +141,25 @@ object DateTimeUtils {
         }
     }
 
+    fun formatPeriodLabel(period: TimelinePeriod, startMillis: Long, endMillis: Long): String {
+        val startDate = toZonedDateTime(startMillis).toLocalDate()
+        return when (period) {
+            TimelinePeriod.DAY -> startDate.format(DAY_LABEL_FORMATTER)
+            TimelinePeriod.WEEK -> {
+                val endDate = toZonedDateTime(endMillis).toLocalDate().minusDays(1) // endMillis is exclusive
+                "${startDate.format(SHORT_DATE_FORMATTER)} - ${endDate.format(DATE_FORMATTER)}"
+            }
+            TimelinePeriod.MONTH -> startDate.format(MONTH_YEAR_FORMATTER)
+            TimelinePeriod.YEAR -> startDate.format(YEAR_FORMATTER)
+        }
+    }
+
     fun getDaysInRange(startMillis: Long, endMillis: Long): List<LocalDate> {
         val startDate = toZonedDateTime(startMillis).toLocalDate()
-        val endDate = toZonedDateTime(endMillis).toLocalDate()
+        val endDate = toZonedDateTime(endMillis).toLocalDate() // exclusive, so don't add it
         val days = mutableListOf<LocalDate>()
         var current = startDate
-        while (!current.isAfter(endDate)) {
+        while (current.isBefore(endDate)) { // strictly before, not isAfter
             days.add(current)
             current = current.plusDays(1)
         }

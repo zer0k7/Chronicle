@@ -57,6 +57,7 @@
     <string name="timeline_tap_cell_hint">Tap any cell to inspect breakdown</string>
     <string name="timeline_date_picker">Select Date</string>
     <string name="timeline_date_range_picker">Select Date Range</string>
+    <string name="timeline_weekly_overview">Weekly Overview</string>
 
     <!-- Report Screen -->
     <string name="report_title">Usage Report</string>
@@ -135,4 +136,21 @@
     <string name="accent_amber">Amber Orange</string>
     <string name="accent_amethyst">Amethyst Purple</string>
     <string name="accent_slate">Slate Grey</string>
+
+    <!-- In-App Updates -->
+    <string name="update_check_button">Check for Updates</string>
+    <string name="update_checking">Checking for updates…</string>
+    <string name="update_available_title">Update Available</string>
+    <string name="update_available_desc">Chronicle v%1$s is available. You are currently on v%2$s.</string>
+    <string name="update_whats_new">What’s New:</string>
+    <string name="update_button_download">Download Update</string>
+    <string name="update_button_install">Install Update</string>
+    <string name="update_button_later">Later</string>
+    <string name="update_downloading">Downloading update… %1$d%%</string>
+    <string name="update_ready_title">Update Ready to Install</string>
+    <string name="update_ready_desc">Chronicle v%1$s has been downloaded and is ready to install.</string>
+    <string name="update_up_to_date">Chronicle is up to date</string>
+    <string name="update_up_to_date_desc">You are running the latest version (%1$s).</string>
+    <string name="update_failed_title">Update Check Failed</string>
+    <string name="update_failed_desc">Unable to connect to GitHub releases. Please check your internet connection.</string>
 </resources>
