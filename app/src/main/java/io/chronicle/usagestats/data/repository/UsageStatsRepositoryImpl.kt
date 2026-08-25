@@ -289,20 +289,24 @@ class UsageStatsRepositoryImpl(
         val manager = usageStatsManager ?: return emptyMap()
         val usageMap = mutableMapOf<String, ParsedUsage>()
 
-        // Look back 24 hours prior to startTime to capture any ongoing session running across midnight
+        // Look back 24 hours prior to startTime to capture ongoing sessions crossing midnight
         val queryBufferStart = maxOf(0L, startTime - (24 * 3600 * 1000L))
         val events = manager.queryEvents(queryBufferStart, queryEnd) ?: return emptyMap()
 
         val event = UsageEvents.Event()
-        var currentForegroundPkg: String? = null
-        var currentForegroundStart: Long = 0L
 
-        fun closeSession(pkg: String, sessionStart: Long, sessionEnd: Long) {
+        // Track active activity classes per package: packageName -> Set<className>
+        val activeActivities = mutableMapOf<String, MutableSet<String>>()
+        // Track the start timestamp of the package's foreground session: packageName -> startTimestamp
+        val sessionStartTimes = mutableMapOf<String, Long>()
+
+        fun closePackageSession(pkg: String, sessionEnd: Long) {
+            val sessionStart = sessionStartTimes.remove(pkg) ?: return
             val effectiveStart = maxOf(sessionStart, startTime)
             val effectiveEnd = minOf(sessionEnd, queryEnd)
             if (effectiveEnd > effectiveStart) {
                 val duration = effectiveEnd - effectiveStart
-                // Sanity cap: continuous single session max 12 hours
+                // Sanity check: continuous session max 12 hours
                 if (duration in 1..(12 * 3600 * 1000L)) {
                     val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
                     parsed.totalForegroundMillis += duration
@@ -316,25 +320,23 @@ class UsageStatsRepositoryImpl(
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val pkg = event.packageName ?: continue
+            val className = event.className ?: "default_activity"
             val time = event.timeStamp
 
             when (event.eventType) {
-                // App moved to foreground / resumed
                 UsageEvents.Event.ACTIVITY_RESUMED,
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
-                    // If a different app was active in the foreground, close its session at this exact timestamp
-                    if (currentForegroundPkg != null && currentForegroundPkg != pkg) {
-                        closeSession(currentForegroundPkg!!, currentForegroundStart, time)
-                        currentForegroundPkg = null
+                    val activities = activeActivities.getOrPut(pkg) { mutableSetOf() }
+                    val wasEmpty = activities.isEmpty()
+                    activities.add(className)
+
+                    if (wasEmpty) {
+                        // Package just entered the foreground
+                        sessionStartTimes[pkg] = time
                     }
 
-                    if (currentForegroundPkg == null) {
-                        currentForegroundPkg = pkg
-                        currentForegroundStart = time
-                    }
-
-                    // Count launches that occurred within the target window
-                    if (time in startTime..queryEnd) {
+                    // Count launches within target window
+                    if (time in startTime..queryEnd && wasEmpty) {
                         val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
                         parsed.launchCount++
                         if (time > parsed.lastTimeUsedMillis) {
@@ -343,33 +345,39 @@ class UsageStatsRepositoryImpl(
                     }
                 }
 
-                // App moved to background / paused / stopped
                 UsageEvents.Event.ACTIVITY_PAUSED,
                 UsageEvents.Event.ACTIVITY_STOPPED,
                 UsageEvents.Event.MOVE_TO_BACKGROUND -> {
-                    if (currentForegroundPkg == pkg) {
-                        closeSession(pkg, currentForegroundStart, time)
-                        currentForegroundPkg = null
+                    val activities = activeActivities[pkg]
+                    if (activities != null) {
+                        activities.remove(className)
+                        if (activities.isEmpty()) {
+                            // All activities for this package are now closed/paused
+                            activeActivities.remove(pkg)
+                            closePackageSession(pkg, time)
+                        }
                     }
                 }
 
-                // Screen turned off / phone locked / device shutdown
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE,
                 UsageEvents.Event.KEYGUARD_SHOWN,
                 UsageEvents.Event.DEVICE_SHUTDOWN -> {
-                    if (currentForegroundPkg != null) {
-                        closeSession(currentForegroundPkg!!, currentForegroundStart, time)
-                        currentForegroundPkg = null
+                    // Screen turned off or phone locked: close all active package sessions
+                    val activePkgs = sessionStartTimes.keys.toList()
+                    for (activePkg in activePkgs) {
+                        closePackageSession(activePkg, time)
                     }
+                    activeActivities.clear()
+                    sessionStartTimes.clear()
                 }
             }
         }
 
-        // Close any active session still in foreground at queryEnd
+        // Close any sessions that are currently still active right now at queryEnd
         val now = System.currentTimeMillis()
         val finalEnd = minOf(now, queryEnd)
-        if (currentForegroundPkg != null && finalEnd > currentForegroundStart) {
-            closeSession(currentForegroundPkg!!, currentForegroundStart, finalEnd)
+        for (activePkg in sessionStartTimes.keys.toList()) {
+            closePackageSession(activePkg, finalEnd)
         }
 
         return usageMap
