@@ -11,8 +11,11 @@ import io.chronicle.usagestats.data.local.entity.DailySummaryEntity
 import io.chronicle.usagestats.domain.model.AppCategory
 import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.HabitInsights
+import io.chronicle.usagestats.domain.model.HourlyUsageSlot
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
+import io.chronicle.usagestats.domain.model.TrendComparison
 import io.chronicle.usagestats.domain.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -39,7 +42,8 @@ class UsageStatsRepositoryImpl(
             return@withContext
         }
 
-        val usageMap = aggregateUsageData(startOfDay, queryEnd)
+        val result = aggregateDayData(startOfDay, queryEnd)
+        val usageMap = result.appUsageMap
 
         val existingRecords = usageDao.getUsageForDateDirect(startOfDay).associateBy { it.packageName }
         val entities = mutableListOf<AppUsageEntity>()
@@ -113,17 +117,34 @@ class UsageStatsRepositoryImpl(
 
     override fun getDailyUsage(dateStartEpochMillis: Long): Flow<DailyUsageSummary> {
         val startOfDay = DateTimeUtils.getStartOfDay(dateStartEpochMillis)
+        val endOfDay = DateTimeUtils.getEndOfDay(dateStartEpochMillis)
+        val now = System.currentTimeMillis()
+        val queryEnd = if (endOfDay > now) now else endOfDay
+
         return usageDao.getUsageForDate(startOfDay).map { entities ->
             val totalTime = entities.sumOf { it.foregroundTimeMillis }
             val top = entities.maxByOrNull { it.foregroundTimeMillis }
             val domainApps = entities.map { it.toDomain(appIconHelper) }
+
+            // Compute realtime advanced insights
+            val analyticsResult = aggregateDayData(startOfDay, queryEnd)
+
+            // Compute trend comparison vs previous day
+            val previousDayStart = DateTimeUtils.toZonedDateTime(startOfDay).minusDays(1).toInstant().toEpochMilli()
+            val previousDaySummary = usageDao.getSummaryForDate(previousDayStart)
+            val previousDuration = previousDaySummary?.totalScreenTimeMillis ?: 0L
+            val trend = calculateTrend(totalTime, previousDuration)
+
             DailyUsageSummary(
                 dateEpochMillis = startOfDay,
                 totalScreenTimeMillis = totalTime,
                 topAppPackage = top?.packageName,
                 topAppLabel = top?.appLabel,
                 appCount = domainApps.size,
-                apps = domainApps
+                apps = domainApps,
+                hourlySlots = analyticsResult.hourlySlots,
+                habitInsights = analyticsResult.habitInsights,
+                trendComparison = trend
             )
         }.flowOn(Dispatchers.IO)
     }
@@ -153,6 +174,7 @@ class UsageStatsRepositoryImpl(
                     totalTimeForegroundMillis = totalTime,
                     launchCount = totalLaunches,
                     lastTimeUsedMillis = lastUsed,
+                    avgSessionDurationMillis = if (totalLaunches > 0) totalTime / totalLaunches else 0L,
                     isRemoved = isRemoved,
                     category = category
                 )
@@ -213,10 +235,24 @@ class UsageStatsRepositoryImpl(
                     totalTimeForegroundMillis = time,
                     launchCount = launches,
                     lastTimeUsedMillis = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L,
+                    avgSessionDurationMillis = if (launches > 0) time / launches else 0L,
                     isRemoved = isRemoved,
                     category = category
                 )
             }.sortedByDescending { it.totalTimeForegroundMillis }
+
+            // Calculate trend vs previous period
+            val (prevStart, prevEnd) = getPreviousPeriodRange(period, referenceEpochMillis)
+            val prevEntities = usageDao.getUsageForRangeDirect(prevStart, prevEnd)
+            val prevDuration = prevEntities.sumOf { it.foregroundTimeMillis }
+            val trend = calculateTrend(totalDuration, prevDuration)
+
+            // Calculate day-specific insights for DAY period
+            val dayAnalytics = if (period == TimelinePeriod.DAY) {
+                val now = System.currentTimeMillis()
+                val queryEnd = if (end > now) now else end
+                aggregateDayData(start, queryEnd)
+            } else null
 
             TimelineData(
                 period = period,
@@ -225,7 +261,10 @@ class UsageStatsRepositoryImpl(
                 totalDurationMillis = totalDuration,
                 activeAppCount = topApps.size,
                 dailySummaries = dailySummaries,
-                topApps = topApps
+                topApps = topApps,
+                hourlySlots = dayAnalytics?.hourlySlots ?: emptyList(),
+                habitInsights = dayAnalytics?.habitInsights,
+                trendComparison = trend
             )
         }.flowOn(Dispatchers.IO)
     }
@@ -239,6 +278,7 @@ class UsageStatsRepositoryImpl(
                     totalTimeForegroundMillis = list.sumOf { it.foregroundTimeMillis },
                     launchCount = list.sumOf { it.launchCount },
                     lastTimeUsedMillis = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L,
+                    avgSessionDurationMillis = 0L,
                     isRemoved = true,
                     category = AppCategory.REMOVED
                 )
@@ -282,23 +322,58 @@ class UsageStatsRepositoryImpl(
     private data class ParsedUsage(
         var totalForegroundMillis: Long = 0L,
         var launchCount: Int = 0,
-        var lastTimeUsedMillis: Long = 0L
+        var lastTimeUsedMillis: Long = 0L,
+        var sessionCount: Int = 0,
+        var shortSessionsCount: Int = 0 // sessions < 2 mins
     )
 
-    private fun aggregateUsageData(startTime: Long, queryEnd: Long): Map<String, ParsedUsage> {
-        val manager = usageStatsManager ?: return emptyMap()
+    private data class DayAnalyticsResult(
+        val appUsageMap: Map<String, ParsedUsage>,
+        val hourlySlots: List<HourlyUsageSlot>,
+        val habitInsights: HabitInsights
+    )
+
+    private fun aggregateDayData(startTime: Long, queryEnd: Long): DayAnalyticsResult {
+        val manager = usageStatsManager ?: return DayAnalyticsResult(emptyMap(), emptyList(), HabitInsights())
         val usageMap = mutableMapOf<String, ParsedUsage>()
 
-        // Look back 24 hours prior to startTime to capture ongoing sessions crossing midnight
+        // 24 hourly buckets
+        val hourlyDurations = LongArray(24) { 0L }
+        val hourlyAppBreakdown = Array(24) { mutableMapOf<String, Long>() }
+
         val queryBufferStart = maxOf(0L, startTime - (24 * 3600 * 1000L))
-        val events = manager.queryEvents(queryBufferStart, queryEnd) ?: return emptyMap()
+        val events = manager.queryEvents(queryBufferStart, queryEnd) ?: return DayAnalyticsResult(emptyMap(), emptyList(), HabitInsights())
 
         val event = UsageEvents.Event()
-
-        // Track active activity classes per package: packageName -> Set<className>
         val activeActivities = mutableMapOf<String, MutableSet<String>>()
-        // Track the start timestamp of the package's foreground session: packageName -> startTimestamp
         val sessionStartTimes = mutableMapOf<String, Long>()
+
+        var deviceUnlocks = 0
+        var firstUnlockTimestamp: Long? = null
+        var lastLockTimestamp: Long? = null
+        val fourAmStart = startTime + (4 * 3600 * 1000L) // 4:00 AM IST
+
+        // Helper to partition session into hourly buckets
+        fun distributeSessionToHourlySlots(pkg: String, sessionStart: Long, sessionEnd: Long) {
+            val effStart = maxOf(sessionStart, startTime)
+            val effEnd = minOf(sessionEnd, queryEnd)
+            if (effEnd <= effStart) return
+
+            var cursor = effStart
+            while (cursor < effEnd) {
+                val hourIndex = (((cursor - startTime) / (3600 * 1000L)).toInt()).coerceIn(0, 23)
+                val slotEnd = startTime + ((hourIndex + 1) * 3600 * 1000L)
+                val chunkEnd = minOf(effEnd, slotEnd)
+                val chunkDuration = chunkEnd - cursor
+
+                if (chunkDuration > 0) {
+                    hourlyDurations[hourIndex] += chunkDuration
+                    val hourMap = hourlyAppBreakdown[hourIndex]
+                    hourMap[pkg] = (hourMap[pkg] ?: 0L) + chunkDuration
+                }
+                cursor = chunkEnd
+            }
+        }
 
         fun closePackageSession(pkg: String, sessionEnd: Long) {
             val sessionStart = sessionStartTimes.remove(pkg) ?: return
@@ -306,13 +381,18 @@ class UsageStatsRepositoryImpl(
             val effectiveEnd = minOf(sessionEnd, queryEnd)
             if (effectiveEnd > effectiveStart) {
                 val duration = effectiveEnd - effectiveStart
-                // Sanity check: continuous session max 12 hours
                 if (duration in 1..(12 * 3600 * 1000L)) {
                     val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
                     parsed.totalForegroundMillis += duration
+                    parsed.sessionCount++
+                    if (duration < 120_000L) { // < 2 mins micro-pickup
+                        parsed.shortSessionsCount++
+                    }
                     if (effectiveEnd > parsed.lastTimeUsedMillis) {
                         parsed.lastTimeUsedMillis = effectiveEnd
                     }
+
+                    distributeSessionToHourlySlots(pkg, effectiveStart, effectiveEnd)
                 }
             }
         }
@@ -331,11 +411,9 @@ class UsageStatsRepositoryImpl(
                     activities.add(className)
 
                     if (wasEmpty) {
-                        // Package just entered the foreground
                         sessionStartTimes[pkg] = time
                     }
 
-                    // Count launches within target window
                     if (time in startTime..queryEnd && wasEmpty) {
                         val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
                         parsed.launchCount++
@@ -352,9 +430,18 @@ class UsageStatsRepositoryImpl(
                     if (activities != null) {
                         activities.remove(className)
                         if (activities.isEmpty()) {
-                            // All activities for this package are now closed/paused
                             activeActivities.remove(pkg)
                             closePackageSession(pkg, time)
+                        }
+                    }
+                }
+
+                UsageEvents.Event.SCREEN_INTERACTIVE,
+                UsageEvents.Event.KEYGUARD_HIDDEN -> {
+                    if (time in startTime..queryEnd) {
+                        deviceUnlocks++
+                        if (time >= fourAmStart && firstUnlockTimestamp == null) {
+                            firstUnlockTimestamp = time
                         }
                     }
                 }
@@ -362,7 +449,9 @@ class UsageStatsRepositoryImpl(
                 UsageEvents.Event.SCREEN_NON_INTERACTIVE,
                 UsageEvents.Event.KEYGUARD_SHOWN,
                 UsageEvents.Event.DEVICE_SHUTDOWN -> {
-                    // Screen turned off or phone locked: close all active package sessions
+                    if (time in startTime..queryEnd) {
+                        lastLockTimestamp = time
+                    }
                     val activePkgs = sessionStartTimes.keys.toList()
                     for (activePkg in activePkgs) {
                         closePackageSession(activePkg, time)
@@ -373,14 +462,131 @@ class UsageStatsRepositoryImpl(
             }
         }
 
-        // Close any sessions that are currently still active right now at queryEnd
+        // Close ongoing sessions
         val now = System.currentTimeMillis()
         val finalEnd = minOf(now, queryEnd)
         for (activePkg in sessionStartTimes.keys.toList()) {
             closePackageSession(activePkg, finalEnd)
         }
 
-        return usageMap
+        // Build 24 Hourly Slots
+        val hourlySlots = (0 until 24).map { hour ->
+            val slotDuration = hourlyDurations[hour]
+            val breakdownMap = hourlyAppBreakdown[hour]
+            val topEntry = breakdownMap.maxByOrNull { it.value }
+            val topLabel = topEntry?.key?.let { appIconHelper.getAppLabel(it) }
+
+            val appList = breakdownMap.map { (p, dur) ->
+                AppUsageInfo(
+                    packageName = p,
+                    appLabel = appIconHelper.getAppLabel(p),
+                    totalTimeForegroundMillis = dur,
+                    category = appIconHelper.getAppCategory(p)
+                )
+            }.sortedByDescending { it.totalTimeForegroundMillis }
+
+            HourlyUsageSlot(
+                hour = hour,
+                totalDurationMillis = slotDuration,
+                topAppPackage = topEntry?.key,
+                topAppLabel = topLabel,
+                appBreakdown = appList
+            )
+        }
+
+        // Calculate Category Breakdown & Productivity Score
+        val categoryBreakdown = mutableMapOf<AppCategory, Long>()
+        var totalTime = 0L
+        for ((p, metrics) in usageMap) {
+            val cat = appIconHelper.getAppCategory(p)
+            categoryBreakdown[cat] = (categoryBreakdown[cat] ?: 0L) + metrics.totalForegroundMillis
+            totalTime += metrics.totalForegroundMillis
+        }
+
+        val productiveTime = categoryBreakdown[AppCategory.PRODUCTIVITY] ?: 0L
+        val utilitiesTime = categoryBreakdown[AppCategory.UTILITIES] ?: 0L
+        val communicationTime = categoryBreakdown[AppCategory.COMMUNICATION] ?: 0L
+        val productivityScore = if (totalTime > 0) {
+            (((productiveTime + (utilitiesTime * 0.7) + (communicationTime * 0.5)) / totalTime) * 100).toInt().coerceIn(0, 100)
+        } else 0
+
+        // Calculate Fragmentation & Average Session
+        val totalSessions = usageMap.values.sumOf { it.sessionCount }
+        val shortSessions = usageMap.values.sumOf { it.shortSessionsCount }
+        val fragmentationScore = if (totalSessions > 0) {
+            ((shortSessions.toDouble() / totalSessions) * 100).toInt().coerceIn(0, 100)
+        } else 0
+
+        val avgSessionDuration = if (totalSessions > 0) totalTime / totalSessions else 0L
+
+        // Bedtime usage: screen time in the 60 minutes prior to lastLock
+        var bedtimeUsage = 0L
+        if (lastLockTimestamp != null) {
+            val bedtimeWindowStart = lastLockTimestamp - (60 * 60 * 1000L)
+            for (hour in 0 until 24) {
+                val hourStart = startTime + (hour * 3600 * 1000L)
+                val hourEnd = hourStart + (3600 * 1000L)
+                if (hourEnd > bedtimeWindowStart && hourStart < lastLockTimestamp) {
+                    val overlap = minOf(hourEnd, lastLockTimestamp) - maxOf(hourStart, bedtimeWindowStart)
+                    if (overlap > 0 && hourlyDurations[hour] > 0) {
+                        bedtimeUsage += minOf(hourlyDurations[hour], overlap)
+                    }
+                }
+            }
+        }
+
+        val habitInsights = HabitInsights(
+            deviceUnlocks = maxOf(deviceUnlocks, usageMap.values.sumOf { it.launchCount }),
+            firstUnlockEpochMillis = firstUnlockTimestamp,
+            lastLockEpochMillis = lastLockTimestamp,
+            bedtimeUsageMillis = bedtimeUsage,
+            avgSessionDurationMillis = avgSessionDuration,
+            fragmentationScore = fragmentationScore,
+            productivityScore = productivityScore,
+            categoryBreakdown = categoryBreakdown
+        )
+
+        return DayAnalyticsResult(
+            appUsageMap = usageMap,
+            hourlySlots = hourlySlots,
+            habitInsights = habitInsights
+        )
+    }
+
+    private fun calculateTrend(currentDuration: Long, previousDuration: Long): TrendComparison {
+        val delta = currentDuration - previousDuration
+        val percentage = if (previousDuration > 0) {
+            ((delta.toDouble() / previousDuration) * 100.0)
+        } else {
+            0.0
+        }
+        return TrendComparison(
+            previousPeriodDurationMillis = previousDuration,
+            deltaDurationMillis = delta,
+            percentageChange = percentage
+        )
+    }
+
+    private fun getPreviousPeriodRange(period: TimelinePeriod, referenceEpochMillis: Long): Pair<Long, Long> {
+        val currentZdt = DateTimeUtils.toZonedDateTime(referenceEpochMillis)
+        return when (period) {
+            TimelinePeriod.DAY -> {
+                val prev = currentZdt.minusDays(1).toInstant().toEpochMilli()
+                Pair(DateTimeUtils.getStartOfDay(prev), DateTimeUtils.getEndOfDay(prev))
+            }
+            TimelinePeriod.WEEK -> {
+                val prev = currentZdt.minusWeeks(1).toInstant().toEpochMilli()
+                Pair(DateTimeUtils.getStartOfWeek(prev), DateTimeUtils.getEndOfWeek(prev))
+            }
+            TimelinePeriod.MONTH -> {
+                val prev = currentZdt.minusMonths(1).toInstant().toEpochMilli()
+                Pair(DateTimeUtils.getStartOfMonth(prev), DateTimeUtils.getEndOfMonth(prev))
+            }
+            TimelinePeriod.YEAR -> {
+                val prev = currentZdt.minusYears(1).toInstant().toEpochMilli()
+                Pair(DateTimeUtils.getStartOfYear(prev), DateTimeUtils.getEndOfYear(prev))
+            }
+        }
     }
 
     private fun AppUsageEntity.toDomain(iconHelper: AppIconHelper): AppUsageInfo {
@@ -390,12 +596,15 @@ class UsageStatsRepositoryImpl(
             if (this.isRemoved) AppCategory.REMOVED else iconHelper.getAppCategory(this.packageName)
         }
 
+        val avgSession = if (this.launchCount > 0) this.foregroundTimeMillis / this.launchCount else 0L
+
         return AppUsageInfo(
             packageName = this.packageName,
             appLabel = this.appLabel,
             totalTimeForegroundMillis = this.foregroundTimeMillis,
             launchCount = this.launchCount,
             lastTimeUsedMillis = this.lastTimeUsedMillis,
+            avgSessionDurationMillis = avgSession,
             isRemoved = this.isRemoved,
             category = resolvedCategory
         )

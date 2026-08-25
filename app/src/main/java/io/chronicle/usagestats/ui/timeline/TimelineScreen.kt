@@ -51,6 +51,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.foundation.Canvas
@@ -64,9 +65,13 @@ import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.ui.components.AppIconView
+import io.chronicle.usagestats.ui.components.CategoryDistributionBar
 import io.chronicle.usagestats.ui.components.ChronicleCard
 import io.chronicle.usagestats.ui.components.ChronicleDatePickerDialog
+import io.chronicle.usagestats.ui.components.HabitsCard
+import io.chronicle.usagestats.ui.components.HourlyBarChart
 import io.chronicle.usagestats.ui.theme.ColorRemoved
+import kotlin.math.abs
 
 @Composable
 fun TimelineScreen(
@@ -76,6 +81,7 @@ fun TimelineScreen(
     val referenceDate by viewModel.referenceDate.collectAsStateWithLifecycle()
     val timelineData by viewModel.timelineData.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val selectedHour by viewModel.selectedHour.collectAsStateWithLifecycle()
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -241,17 +247,54 @@ fun TimelineScreen(
                 )
             }
         } else {
+            // Determine displayed apps (either all day or filtered by tapped hour)
+            val displayedApps = if (selectedPeriod == TimelinePeriod.DAY && selectedHour != null) {
+                val hourSlot = data.hourlySlots.getOrNull(selectedHour!!)
+                hourSlot?.appBreakdown ?: emptyList()
+            } else {
+                data.topApps
+            }
+
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // Summary Card
+                // 1. Total Screen Time & Trend Comparison Card
                 item {
                     TimelineSummaryCard(data)
                 }
 
-                // Weekly Bar Chart (only in Week view)
+                // 2. Interactive 24-Hour Timeline Bar Chart (Day view only)
+                if (selectedPeriod == TimelinePeriod.DAY && data.hourlySlots.isNotEmpty()) {
+                    item {
+                        HourlyBarChart(
+                            hourlySlots = data.hourlySlots,
+                            selectedHour = selectedHour,
+                            onHourSelected = { hour -> viewModel.selectHour(hour) }
+                        )
+                    }
+                }
+
+                // 3. Category Distribution Bar & Productivity Score
+                val habits = data.habitInsights
+                if (habits != null && habits.categoryBreakdown.isNotEmpty()) {
+                    item {
+                        CategoryDistributionBar(
+                            categoryBreakdown = habits.categoryBreakdown,
+                            productivityScore = habits.productivityScore
+                        )
+                    }
+                }
+
+                // 4. Habits & Sleep Routine Card (Day view only)
+                if (selectedPeriod == TimelinePeriod.DAY && habits != null) {
+                    item {
+                        HabitsCard(insights = habits)
+                    }
+                }
+
+                // 5. Weekly Bar Chart (Week view only)
                 if (selectedPeriod == TimelinePeriod.WEEK && data.dailySummaries.isNotEmpty()) {
                     item {
                         ChronicleCard(modifier = Modifier.fillMaxWidth()) {
@@ -272,10 +315,18 @@ fun TimelineScreen(
                     }
                 }
 
-                // Top Apps List Header
+                // 6. Most Used Apps Header
                 item {
+                    val headerTitle = if (selectedPeriod == TimelinePeriod.DAY && selectedHour != null) {
+                        val startHourStr = String.format("%02d:00", selectedHour)
+                        val endHourStr = String.format("%02d:00", (selectedHour!! + 1) % 24)
+                        "Apps used $startHourStr - $endHourStr"
+                    } else {
+                        stringResource(R.string.timeline_most_used)
+                    }
+
                     Text(
-                        text = stringResource(R.string.timeline_most_used),
+                        text = headerTitle,
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold,
                         color = MaterialTheme.colorScheme.onBackground,
@@ -283,10 +334,12 @@ fun TimelineScreen(
                     )
                 }
 
-                items(data.topApps) { app ->
+                // 7. App Rows
+                val maxDuration = displayedApps.firstOrNull()?.totalTimeForegroundMillis ?: 1L
+                items(displayedApps) { app ->
                     AppUsageRow(
                         app = app,
-                        maxDuration = data.topApps.firstOrNull()?.totalTimeForegroundMillis ?: 1L
+                        maxDuration = maxDuration
                     )
                 }
 
@@ -299,19 +352,51 @@ fun TimelineScreen(
 
 @Composable
 private fun TimelineSummaryCard(data: TimelineData) {
+    val primaryColor = MaterialTheme.colorScheme.primary
+
     ChronicleCard(modifier = Modifier.fillMaxWidth()) {
         Column {
-            Text(
-                text = stringResource(R.string.timeline_total_screen_time).uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = stringResource(R.string.timeline_total_screen_time).uppercase(),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                // Trend Comparison Badge
+                val trend = data.trendComparison
+                if (trend != null && trend.previousPeriodDurationMillis > 0) {
+                    val isLess = trend.deltaDurationMillis < 0
+                    val deltaFormatted = DateTimeUtils.formatDuration(abs(trend.deltaDurationMillis))
+                    val pctFormatted = String.format("%.0f%%", abs(trend.percentageChange))
+                    val badgeColor = if (isLess) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
+                    val trendText = if (isLess) "-$deltaFormatted (-$pctFormatted)" else "+$deltaFormatted (+$pctFormatted)"
+
+                    Surface(
+                        color = badgeColor.copy(alpha = 0.12f),
+                        shape = RoundedCornerShape(10.dp)
+                    ) {
+                        Text(
+                            text = trendText,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = badgeColor,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+            }
+
             Spacer(modifier = Modifier.height(4.dp))
             Text(
                 text = DateTimeUtils.formatDuration(data.totalDurationMillis),
                 style = MaterialTheme.typography.displaySmall,
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
+                color = primaryColor
             )
             Spacer(modifier = Modifier.height(12.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
@@ -382,11 +467,28 @@ private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
-                    Text(
-                        text = "${app.launchCount} launches" + if (app.isRemoved) " • Removed" else "",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+
+                    val subtext = buildString {
+                        if (app.launchCount > 0) {
+                            append("${app.launchCount} launches")
+                        }
+                        if (app.avgSessionDurationMillis > 0) {
+                            if (isNotEmpty()) append(" • ")
+                            append("avg ${DateTimeUtils.formatDuration(app.avgSessionDurationMillis)}")
+                        }
+                        if (app.isRemoved) {
+                            if (isNotEmpty()) append(" • ")
+                            append("Removed")
+                        }
+                    }
+
+                    if (subtext.isNotEmpty()) {
+                        Text(
+                            text = subtext,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
 
                 Spacer(modifier = Modifier.width(12.dp))
@@ -426,7 +528,6 @@ private fun WeeklyBarChart(
     modifier: Modifier = Modifier
 ) {
     val maxDuration = dailySummaries.maxOfOrNull { it.totalScreenTimeMillis } ?: 1L
-    // Round up to nearest 2h for y-axis
     val twoHoursMs = 2 * 60 * 60 * 1000L
     val yAxisMax = ((maxDuration / twoHoursMs) + 1) * twoHoursMs
     val yAxisSteps = (yAxisMax / twoHoursMs).toInt().coerceIn(1, 6)
@@ -435,14 +536,12 @@ private fun WeeklyBarChart(
     val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
     val daysOfWeek = java.time.DayOfWeek.entries
 
-    // Map summaries by day of week
     val summaryByDay = dailySummaries.associateBy {
         DateTimeUtils.toZonedDateTime(it.dateEpochMillis).dayOfWeek
     }
 
     val primaryColor = MaterialTheme.colorScheme.primary
     val mutedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-    val textColor = MaterialTheme.colorScheme.onSurfaceVariant
     val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
 
     val textPaint = remember {
@@ -470,11 +569,10 @@ private fun WeeklyBarChart(
             .padding(start = 40.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
     ) {
         val chartWidth = size.width
-        val chartHeight = size.height - 40f // leave room for day labels
+        val chartHeight = size.height - 40f
         val barWidth = chartWidth / 7f * 0.6f
         val barSpacing = chartWidth / 7f
 
-        // Draw horizontal grid lines and y-axis labels
         for (i in 0..yAxisSteps) {
             val y = chartHeight - (chartHeight * i / yAxisSteps)
             drawLine(
@@ -492,7 +590,6 @@ private fun WeeklyBarChart(
             )
         }
 
-        // Draw bars
         for (i in daysOfWeek.indices) {
             val dayOfWeek = daysOfWeek[i]
             val summary = summaryByDay[dayOfWeek]
@@ -505,7 +602,6 @@ private fun WeeklyBarChart(
             val isCurrentDay = dayOfWeek == currentDayOfWeek
             val barColor = if (isCurrentDay) primaryColor else mutedColor
 
-            // Bar
             if (barHeight > 0f) {
                 drawRoundRect(
                     color = barColor,
@@ -515,7 +611,6 @@ private fun WeeklyBarChart(
                 )
             }
 
-            // Day label below
             drawContext.canvas.nativeCanvas.drawText(
                 dayLabels[i],
                 x + barWidth / 2f,
@@ -525,4 +620,3 @@ private fun WeeklyBarChart(
         }
     }
 }
-

@@ -50,14 +50,23 @@ class TimelineViewModel @Inject constructor(
         }
     }
 
+    private val _selectedHour = MutableStateFlow<Int?>(null)
+    val selectedHour: StateFlow<Int?> = _selectedHour.asStateFlow()
+
     fun selectPeriod(period: TimelinePeriod) {
         _selectedPeriod.value = period
+        _selectedHour.value = null
         refreshData()
     }
 
     fun selectDate(epochMillis: Long) {
         _referenceDate.value = epochMillis
+        _selectedHour.value = null
         refreshData()
+    }
+
+    fun selectHour(hour: Int?) {
+        _selectedHour.value = hour
     }
 
     fun navigatePrevious() {
