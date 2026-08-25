@@ -31,7 +31,8 @@ class AppUpdateManager @Inject constructor(
         private const val GITHUB_REPO = "zer0k7/Chronicle"
         private const val GITHUB_API_URL = "https://api.github.com/repos/$GITHUB_REPO/releases/latest"
         private const val BUFFER_SIZE = 8192
-        private const val TIMEOUT_MILLIS = 15000
+        private const val TIMEOUT_MILLIS = 20000
+        private const val MIN_VALID_APK_BYTES = 1_000_000L // Valid Chronicle APK is > 3MB
     }
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -51,10 +52,17 @@ class AppUpdateManager @Inject constructor(
         _isDialogVisible.value = false
     }
 
+    private fun getUpdateDirectory(): File {
+        val dir = File(context.getExternalFilesDir(null) ?: context.cacheDir, "apk_updates")
+        if (!dir.exists()) {
+            dir.mkdirs()
+        }
+        return dir
+    }
+
     fun checkForUpdates(silent: Boolean = false) {
         scope.launch {
             if (_updateState.value is UpdateState.Downloading) {
-                // Don't interrupt active download
                 return@launch
             }
 
@@ -62,9 +70,9 @@ class AppUpdateManager @Inject constructor(
 
             val updateInfo = fetchLatestReleaseInfo()
             if (updateInfo != null && updateInfo.isAvailable) {
-                // Check if the APK has already been downloaded
+                // Check if the APK has already been downloaded and is valid
                 val cachedApk = getDownloadedApkFile(updateInfo.latestVersion)
-                if (cachedApk != null && cachedApk.exists() && cachedApk.length() > 0) {
+                if (cachedApk != null && cachedApk.exists() && cachedApk.length() >= MIN_VALID_APK_BYTES) {
                     _updateState.value = UpdateState.ReadyToInstall(updateInfo, cachedApk)
                 } else {
                     _updateState.value = UpdateState.UpdateAvailable(updateInfo)
@@ -93,26 +101,60 @@ class AppUpdateManager @Inject constructor(
 
         downloadJob = scope.launch {
             try {
-                val updateDir = File(context.cacheDir, "apk_updates").apply { mkdirs() }
-                // Clear any older update files
+                val updateDir = getUpdateDirectory()
+                val destinationFile = File(updateDir, "chronicle-v${info.latestVersion}.apk")
+                val tempFile = File(updateDir, "chronicle-v${info.latestVersion}.apk.tmp")
+
+                // Clear any leftover temp files or broken existing files
+                if (tempFile.exists()) tempFile.delete()
+                if (destinationFile.exists()) destinationFile.delete()
+
+                // Clean up previous version files
                 updateDir.listFiles()?.forEach { file ->
                     if (file.name != "chronicle-v${info.latestVersion}.apk") {
                         file.delete()
                     }
                 }
 
-                val destinationFile = File(updateDir, "chronicle-v${info.latestVersion}.apk")
-                val url = URL(info.apkDownloadUrl)
-                val connection = (url.openConnection() as HttpURLConnection).apply {
-                    instanceFollowRedirects = true
-                    connectTimeout = TIMEOUT_MILLIS
-                    readTimeout = TIMEOUT_MILLIS
-                    setRequestProperty("User-Agent", "Chronicle-Android-App")
-                    connect()
+                var currentUrl = info.apkDownloadUrl
+                var connection: HttpURLConnection? = null
+                var redirectCount = 0
+                val maxRedirects = 8
+
+                // Manually follow HTTP -> HTTPS or cross-domain redirects (GitHub releases -> AWS S3)
+                while (redirectCount < maxRedirects) {
+                    val url = URL(currentUrl)
+                    val conn = (url.openConnection() as HttpURLConnection).apply {
+                        instanceFollowRedirects = true
+                        connectTimeout = TIMEOUT_MILLIS
+                        readTimeout = TIMEOUT_MILLIS
+                        setRequestProperty("User-Agent", "Chronicle-Android-App")
+                    }
+
+                    val responseCode = conn.responseCode
+                    if (responseCode in listOf(
+                            HttpURLConnection.HTTP_MOVED_PERM,
+                            HttpURLConnection.HTTP_MOVED_TEMP,
+                            HttpURLConnection.HTTP_SEE_OTHER,
+                            307,
+                            308
+                        )
+                    ) {
+                        val newLocation = conn.getHeaderField("Location")
+                        conn.disconnect()
+                        if (newLocation != null) {
+                            currentUrl = newLocation
+                            redirectCount++
+                            continue
+                        }
+                    }
+
+                    connection = conn
+                    break
                 }
 
-                if (connection.responseCode !in 200..299) {
-                    _updateState.value = UpdateState.Error("Server returned code ${connection.responseCode}")
+                if (connection == null || connection.responseCode !in 200..299) {
+                    _updateState.value = UpdateState.Error("Server returned code ${connection?.responseCode ?: "connection failed"}")
                     return@launch
                 }
 
@@ -126,7 +168,7 @@ class AppUpdateManager @Inject constructor(
                 _updateState.value = UpdateState.Downloading(info, 0, 0L, totalBytes)
 
                 connection.inputStream.use { input ->
-                    FileOutputStream(destinationFile).use { output ->
+                    FileOutputStream(tempFile).use { output ->
                         val buffer = ByteArray(BUFFER_SIZE)
                         var bytesRead: Int
                         while (input.read(buffer).also { bytesRead = it } != -1) {
@@ -145,12 +187,23 @@ class AppUpdateManager @Inject constructor(
                         }
                     }
                 }
+                connection.disconnect()
 
-                if (destinationFile.exists() && destinationFile.length() > 0) {
-                    _updateState.value = UpdateState.ReadyToInstall(info, destinationFile)
-                    _isDialogVisible.value = true
+                // Validate the downloaded file size to ensure it is not an HTML error stub
+                if (tempFile.exists() && tempFile.length() >= MIN_VALID_APK_BYTES) {
+                    if (destinationFile.exists()) destinationFile.delete()
+                    val renamed = tempFile.renameTo(destinationFile)
+
+                    if (renamed && destinationFile.exists() && destinationFile.length() >= MIN_VALID_APK_BYTES) {
+                        _updateState.value = UpdateState.ReadyToInstall(info, destinationFile)
+                        _isDialogVisible.value = true
+                    } else {
+                        tempFile.delete()
+                        _updateState.value = UpdateState.Error("Failed to finalize downloaded package.")
+                    }
                 } else {
-                    _updateState.value = UpdateState.Error("Downloaded file is empty.")
+                    tempFile.delete()
+                    _updateState.value = UpdateState.Error("Downloaded package is incomplete or corrupted. Please retry.")
                 }
             } catch (e: Exception) {
                 _updateState.value = UpdateState.Error(e.localizedMessage ?: "Download failed.")
@@ -160,6 +213,11 @@ class AppUpdateManager @Inject constructor(
 
     fun installApk(apkFile: File) {
         try {
+            if (!apkFile.exists() || apkFile.length() < MIN_VALID_APK_BYTES) {
+                _updateState.value = UpdateState.Error("Invalid or corrupted update package.")
+                return
+            }
+
             val contentUri: Uri = FileProvider.getUriForFile(
                 context,
                 "${context.packageName}.fileprovider",
@@ -168,13 +226,13 @@ class AppUpdateManager @Inject constructor(
 
             val intent = Intent(Intent.ACTION_VIEW).apply {
                 setDataAndType(contentUri, "application/vnd.android.package-archive")
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_GRANT_READ_URI_PERMISSION
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
             }
             context.startActivity(intent)
         } catch (e: Exception) {
-            // Fallback: Open file or settings
             val intent = Intent(Intent.ACTION_VIEW, Uri.parse(apkFile.absolutePath)).apply {
-                flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
             }
             try {
                 context.startActivity(intent)
@@ -185,9 +243,9 @@ class AppUpdateManager @Inject constructor(
     }
 
     private fun getDownloadedApkFile(version: String): File? {
-        val updateDir = File(context.cacheDir, "apk_updates")
+        val updateDir = getUpdateDirectory()
         val apkFile = File(updateDir, "chronicle-v$version.apk")
-        return if (apkFile.exists() && apkFile.length() > 0) apkFile else null
+        return if (apkFile.exists() && apkFile.length() >= MIN_VALID_APK_BYTES) apkFile else null
     }
 
     private suspend fun fetchLatestReleaseInfo(): AppUpdateInfo? = withContext(Dispatchers.IO) {

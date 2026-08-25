@@ -404,6 +404,11 @@ fun ReportScreen(
                         item {
                             io.chronicle.usagestats.ui.components.HabitsCard(insights = habits)
                         }
+                        if (habits.wakingLifeImpact != null) {
+                            item {
+                                io.chronicle.usagestats.ui.components.WakingLifeCard(insights = habits)
+                            }
+                        }
                     }
 
                     // App vs App Comparison Card

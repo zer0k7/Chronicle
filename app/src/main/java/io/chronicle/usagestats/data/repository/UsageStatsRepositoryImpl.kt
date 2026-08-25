@@ -11,12 +11,15 @@ import io.chronicle.usagestats.data.local.entity.DailySummaryEntity
 import io.chronicle.usagestats.domain.model.AppCategory
 import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.GhostOpensInsight
 import io.chronicle.usagestats.domain.model.HabitInsights
 import io.chronicle.usagestats.domain.model.HourlyUsageSlot
 import io.chronicle.usagestats.domain.model.LongestSession
+import io.chronicle.usagestats.domain.model.MorningDoomscroll
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.domain.model.TrendComparison
+import io.chronicle.usagestats.domain.model.WakingLifeImpact
 import io.chronicle.usagestats.domain.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -337,6 +340,13 @@ class UsageStatsRepositoryImpl(
         var shortSessionsCount: Int = 0 // sessions < 2 mins
     )
 
+    private data class ClosedSessionMetric(
+        val pkg: String,
+        val start: Long,
+        val end: Long,
+        val duration: Long
+    )
+
     private data class DayAnalyticsResult(
         val appUsageMap: Map<String, ParsedUsage>,
         val hourlySlots: List<HourlyUsageSlot>,
@@ -391,6 +401,8 @@ class UsageStatsRepositoryImpl(
         var maxSessionEnd = 0L
 
         val hourlyUnlocks = IntArray(24) { 0 }
+        val ghostOpensCount = mutableMapOf<String, Int>()
+        val recordedSessions = mutableListOf<ClosedSessionMetric>()
 
         fun closePackageSession(pkg: String, sessionEnd: Long) {
             val sessionStart = sessionStartTimes.remove(pkg) ?: return
@@ -405,6 +417,9 @@ class UsageStatsRepositoryImpl(
                     if (duration < 120_000L) { // < 2 mins micro-pickup
                         parsed.shortSessionsCount++
                     }
+                    if (duration <= 30_000L) { // <= 30s ghost reflex open
+                        ghostOpensCount[pkg] = (ghostOpensCount[pkg] ?: 0) + 1
+                    }
                     if (effectiveEnd > parsed.lastTimeUsedMillis) {
                         parsed.lastTimeUsedMillis = effectiveEnd
                     }
@@ -416,6 +431,7 @@ class UsageStatsRepositoryImpl(
                         maxSessionEnd = effectiveEnd
                     }
 
+                    recordedSessions.add(ClosedSessionMetric(pkg, effectiveStart, effectiveEnd, duration))
                     distributeSessionToHourlySlots(pkg, effectiveStart, effectiveEnd)
                 }
             }
@@ -574,6 +590,52 @@ class UsageStatsRepositoryImpl(
         val peakHourIndex: Int? = (0 until 24).maxByOrNull { i: Int -> hourlyUnlocks[i] }
         val peakCount = peakHourIndex?.let { i: Int -> hourlyUnlocks[i] } ?: 0
 
+        // Ghost Opens Insight (sessions <= 30 seconds)
+        val totalGhostOpens = ghostOpensCount.values.sum()
+        val topGhostEntry = ghostOpensCount.maxByOrNull { it.value }
+        val ghostInsight = if (totalGhostOpens > 0 && topGhostEntry != null) {
+            GhostOpensInsight(
+                totalGhostOpens = totalGhostOpens,
+                topGhostAppLabel = appIconHelper.getAppLabel(topGhostEntry.key),
+                topGhostAppOpens = topGhostEntry.value
+            )
+        } else null
+
+        // Morning Doomscroll Insight (Social / Games / Entertainment in 45m after first unlock)
+        var morningDoomDuration = 0L
+        val morningDoomMap = mutableMapOf<String, Long>()
+        if (firstUnlockTimestamp != null) {
+            val morningWindowEnd = firstUnlockTimestamp + (45 * 60 * 1000L)
+            for (session in recordedSessions) {
+                val cat = appIconHelper.getAppCategory(session.pkg)
+                if (cat == AppCategory.SOCIAL || cat == AppCategory.GAMES || cat == AppCategory.ENTERTAINMENT) {
+                    if (session.end > firstUnlockTimestamp && session.start < morningWindowEnd) {
+                        val overlap = minOf(session.end, morningWindowEnd) - maxOf(session.start, firstUnlockTimestamp)
+                        if (overlap > 0) {
+                            morningDoomDuration += overlap
+                            morningDoomMap[session.pkg] = (morningDoomMap[session.pkg] ?: 0L) + overlap
+                        }
+                    }
+                }
+            }
+        }
+        val topMorningEntry = morningDoomMap.maxByOrNull { it.value }
+        val morningDoomscrollInsight = if (morningDoomDuration > 0) {
+            MorningDoomscroll(
+                durationMillis = morningDoomDuration,
+                topAppLabel = topMorningEntry?.key?.let { appIconHelper.getAppLabel(it) }
+            )
+        } else null
+
+        // Waking Life Impact (16 hours conscious awake time = 57,600,000 ms)
+        val wakingDayMillis = 16.0 * 3600.0 * 1000.0
+        val wakingPct = ((totalTime.toDouble() / wakingDayMillis) * 100.0).coerceIn(0.0, 100.0)
+        val annualDays = ((totalTime.toDouble() / (1000 * 3600)) * 365.0 / 24.0).toInt().coerceAtLeast(0)
+        val wakingLifeImpact = WakingLifeImpact(
+            wakingPercentage = wakingPct,
+            annualProjectedDays = annualDays
+        )
+
         val habitInsights = HabitInsights(
             deviceUnlocks = maxOf(deviceUnlocks, usageMap.values.sumOf { it.launchCount }),
             firstUnlockEpochMillis = firstUnlockTimestamp,
@@ -586,7 +648,10 @@ class UsageStatsRepositoryImpl(
             longestSession = longestSession,
             peakUnlockHour = if (peakCount > 0) peakHourIndex else null,
             peakUnlockCount = peakCount,
-            hourlyUnlocks = hourlyUnlocks.toList()
+            hourlyUnlocks = hourlyUnlocks.toList(),
+            ghostOpens = ghostInsight,
+            morningDoomscroll = morningDoomscrollInsight,
+            wakingLifeImpact = wakingLifeImpact
         )
 
         return DayAnalyticsResult(

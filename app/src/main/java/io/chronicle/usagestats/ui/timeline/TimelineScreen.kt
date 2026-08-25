@@ -292,6 +292,11 @@ fun TimelineScreen(
                     item {
                         HabitsCard(insights = habits)
                     }
+                    if (habits.wakingLifeImpact != null) {
+                        item {
+                            io.chronicle.usagestats.ui.components.WakingLifeCard(insights = habits)
+                        }
+                    }
                 }
 
                 // 5. Weekly Bar Chart (Week view only)

@@ -219,4 +219,15 @@
     <string name="budget_title">Daily Usage Limits</string>
     <string name="budget_set_limit">Set Daily Limit</string>
     <string name="budget_minutes">Minutes per day</string>
+
+    <!-- Psychological Analytics Suite -->
+    <string name="waking_life_title">Conscious Waking Life</string>
+    <string name="waking_life_pct_label">%1$.1f%% of waking life on screen</string>
+    <string name="waking_life_annual_projection">Projected %1$d full days lost in %2$d</string>
+    <string name="ghost_opens_title">Ghost Reflex Opens</string>
+    <string name="ghost_opens_desc">Micro-sessions under 30s opened out of habit</string>
+    <string name="ghost_opens_format">%1$d micro-checks • Top: %2$s (%3$d)</string>
+    <string name="morning_doomscroll_title">Morning Bed Screen Time</string>
+    <string name="morning_doomscroll_desc">Entertainment and social usage within 45m of waking</string>
+    <string name="morning_doomscroll_format">%1$s in bed after waking • Top: %2$s</string>
 </resources>

@@ -48,6 +48,22 @@ data class LongestSession(
     val endEpochMillis: Long
 )
 
+data class GhostOpensInsight(
+    val totalGhostOpens: Int,
+    val topGhostAppLabel: String? = null,
+    val topGhostAppOpens: Int = 0
+)
+
+data class MorningDoomscroll(
+    val durationMillis: Long,
+    val topAppLabel: String? = null
+)
+
+data class WakingLifeImpact(
+    val wakingPercentage: Double, // 0.0 .. 100.0%
+    val annualProjectedDays: Int  // Full 24h days per year
+)
+
 data class HabitInsights(
     val deviceUnlocks: Int = 0,
     val firstUnlockEpochMillis: Long? = null,
@@ -60,7 +76,10 @@ data class HabitInsights(
     val longestSession: LongestSession? = null,
     val peakUnlockHour: Int? = null,
     val peakUnlockCount: Int = 0,
-    val hourlyUnlocks: List<Int> = emptyList()
+    val hourlyUnlocks: List<Int> = emptyList(),
+    val ghostOpens: GhostOpensInsight? = null,
+    val morningDoomscroll: MorningDoomscroll? = null,
+    val wakingLifeImpact: WakingLifeImpact? = null
 )
 
 data class TrendComparison(
