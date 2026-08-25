@@ -43,6 +43,11 @@ class TimelineViewModel @Inject constructor(
 
     init {
         refreshData()
+        viewModelScope.launch {
+            try {
+                syncUsageDataUseCase.syncRecentDays(7)
+            } catch (_: Exception) { }
+        }
     }
 
     fun selectPeriod(period: TimelinePeriod) {
@@ -86,7 +91,26 @@ class TimelineViewModel @Inject constructor(
         viewModelScope.launch {
             _isRefreshing.value = true
             try {
-                syncUsageDataUseCase.syncToday()
+                when (_selectedPeriod.value) {
+                    TimelinePeriod.DAY -> {
+                        syncUsageDataUseCase.syncDate(_referenceDate.value)
+                    }
+                    TimelinePeriod.WEEK -> {
+                        val start = DateTimeUtils.getStartOfWeek(_referenceDate.value)
+                        val end = DateTimeUtils.getEndOfWeek(_referenceDate.value)
+                        syncUsageDataUseCase.syncRange(start, end)
+                    }
+                    TimelinePeriod.MONTH -> {
+                        val start = DateTimeUtils.getStartOfMonth(_referenceDate.value)
+                        val end = DateTimeUtils.getEndOfMonth(_referenceDate.value)
+                        syncUsageDataUseCase.syncRange(start, end)
+                    }
+                    TimelinePeriod.YEAR -> {
+                        val start = DateTimeUtils.getStartOfYear(_referenceDate.value)
+                        val end = DateTimeUtils.getEndOfYear(_referenceDate.value)
+                        syncUsageDataUseCase.syncRange(start, end)
+                    }
+                }
             } catch (_: Exception) {
                 // Sync failure is non-fatal
             } finally {

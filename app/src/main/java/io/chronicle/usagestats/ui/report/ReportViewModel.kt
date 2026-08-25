@@ -63,7 +63,13 @@ class ReportViewModel @Inject constructor(
     }
 
     fun selectDate(epochMillis: Long) {
-        _selectedDate.value = DateTimeUtils.getStartOfDay(epochMillis)
+        val startOfDay = DateTimeUtils.getStartOfDay(epochMillis)
+        _selectedDate.value = startOfDay
+        viewModelScope.launch {
+            try {
+                syncUsageDataUseCase.syncDate(startOfDay)
+            } catch (_: Exception) { }
+        }
     }
 
     fun setSearchQuery(query: String) {

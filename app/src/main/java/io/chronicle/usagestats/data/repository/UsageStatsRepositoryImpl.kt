@@ -289,45 +289,67 @@ class UsageStatsRepositoryImpl(
         val manager = usageStatsManager ?: return emptyMap()
         val usageMap = mutableMapOf<String, ParsedUsage>()
 
-        // Query events for the exact IST day boundary
-        val events = manager.queryEvents(startTime, queryEnd) ?: return emptyMap()
-        val event = UsageEvents.Event()
-        val activeSessionStarts = mutableMapOf<String, Long>()
-
-        while (events.hasNextEvent()) {
-            events.getNextEvent(event)
-            val pkg = event.packageName ?: continue
-            val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
-
-            when (event.eventType) {
-                UsageEvents.Event.ACTIVITY_RESUMED -> {
-                    activeSessionStarts[pkg] = event.timeStamp
-                    parsed.launchCount++
-                    if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                        parsed.lastTimeUsedMillis = event.timeStamp
-                    }
-                }
-                UsageEvents.Event.ACTIVITY_PAUSED,
-                UsageEvents.Event.ACTIVITY_STOPPED -> {
-                    val resumedAt = activeSessionStarts.remove(pkg)
-                    if (resumedAt != null && event.timeStamp > resumedAt) {
-                        parsed.totalForegroundMillis += (event.timeStamp - resumedAt)
-                    }
-                    if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                        parsed.lastTimeUsedMillis = event.timeStamp
-                    }
+        // 1. Primary Source of Truth: Query aggregated stats from system usage database for [startTime, queryEnd]
+        // This ensures games, multi-activity apps, and earlier morning sessions are never dropped
+        try {
+            val aggregatedStats = manager.queryAndAggregateUsageStats(startTime, queryEnd)
+            aggregatedStats?.forEach { (pkg, stat) ->
+                if (pkg.isNotBlank() && (stat.totalTimeInForeground > 0 || stat.lastTimeUsed >= startTime)) {
+                    val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
+                    parsed.totalForegroundMillis = stat.totalTimeInForeground
+                    parsed.lastTimeUsedMillis = stat.lastTimeUsed
                 }
             }
+        } catch (_: Exception) {
+            // Fallback gracefully if system call fails
         }
 
-        // Capture currently in-progress active sessions (app still in foreground)
-        val now = System.currentTimeMillis()
-        val effectiveEnd = if (queryEnd > now) now else queryEnd
-        for ((pkg, startStamp) in activeSessionStarts) {
-            if (effectiveEnd > startStamp) {
-                val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
-                parsed.totalForegroundMillis += (effectiveEnd - startStamp)
+        // 2. Query event stream for launch counts and live in-progress foreground sessions
+        try {
+            val events = manager.queryEvents(startTime, queryEnd)
+            if (events != null) {
+                val event = UsageEvents.Event()
+                var lastResumedPkg: String? = null
+                var lastResumedTime: Long = 0L
+
+                while (events.hasNextEvent()) {
+                    events.getNextEvent(event)
+                    val pkg = event.packageName ?: continue
+                    val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
+
+                    when (event.eventType) {
+                        UsageEvents.Event.ACTIVITY_RESUMED -> {
+                            lastResumedPkg = pkg
+                            lastResumedTime = event.timeStamp
+                            parsed.launchCount++
+                            if (event.timeStamp > parsed.lastTimeUsedMillis) {
+                                parsed.lastTimeUsedMillis = event.timeStamp
+                            }
+                        }
+                        UsageEvents.Event.ACTIVITY_PAUSED,
+                        UsageEvents.Event.ACTIVITY_STOPPED -> {
+                            if (lastResumedPkg == pkg) {
+                                lastResumedPkg = null
+                            }
+                            if (event.timeStamp > parsed.lastTimeUsedMillis) {
+                                parsed.lastTimeUsedMillis = event.timeStamp
+                            }
+                        }
+                    }
+                }
+
+                // If an app is still in the foreground right now, add ongoing live session delta
+                val now = System.currentTimeMillis()
+                if (lastResumedPkg != null && lastResumedTime > 0L && queryEnd >= now) {
+                    val ongoingDelta = now - lastResumedTime
+                    if (ongoingDelta in 1..(6 * 3600 * 1000L)) {
+                        val parsed = usageMap.getOrPut(lastResumedPkg) { ParsedUsage() }
+                        parsed.totalForegroundMillis += ongoingDelta
+                    }
+                }
             }
+        } catch (_: Exception) {
+            // Non-fatal
         }
 
         return usageMap

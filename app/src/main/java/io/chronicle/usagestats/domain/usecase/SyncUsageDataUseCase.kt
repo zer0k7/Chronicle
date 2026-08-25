@@ -16,6 +16,10 @@ class SyncUsageDataUseCase(
         usageRepository.syncUsageForDate(dayStart)
     }
 
+    suspend fun syncRange(startDateEpochMillis: Long, endDateEpochMillis: Long) {
+        usageRepository.syncUsageForRange(startDateEpochMillis, endDateEpochMillis)
+    }
+
     suspend fun syncRecentDays(dayCount: Int = 30) {
         val now = DateTimeUtils.nowInIst()
         for (i in 0 until dayCount) {

@@ -24,13 +24,13 @@ interface UsageDao {
     @Query("SELECT * FROM app_usage_records WHERE dateStartEpochMillis = :dateStartEpoch ORDER BY foregroundTimeMillis DESC")
     suspend fun getUsageForDateDirect(dateStartEpoch: Long): List<AppUsageEntity>
 
-    @Query("SELECT * FROM app_usage_records WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis <= :endEpoch ORDER BY foregroundTimeMillis DESC")
+    @Query("SELECT * FROM app_usage_records WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis < :endEpoch ORDER BY foregroundTimeMillis DESC")
     fun getUsageForRange(startEpoch: Long, endEpoch: Long): Flow<List<AppUsageEntity>>
 
-    @Query("SELECT * FROM app_usage_records WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis <= :endEpoch ORDER BY foregroundTimeMillis DESC")
+    @Query("SELECT * FROM app_usage_records WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis < :endEpoch ORDER BY foregroundTimeMillis DESC")
     suspend fun getUsageForRangeDirect(startEpoch: Long, endEpoch: Long): List<AppUsageEntity>
 
-    @Query("SELECT * FROM daily_summaries WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis <= :endEpoch ORDER BY dateStartEpochMillis ASC")
+    @Query("SELECT * FROM daily_summaries WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis < :endEpoch ORDER BY dateStartEpochMillis ASC")
     fun getSummariesInRange(startEpoch: Long, endEpoch: Long): Flow<List<DailySummaryEntity>>
 
     @Query("SELECT * FROM daily_summaries WHERE dateStartEpochMillis = :dateStartEpoch LIMIT 1")
