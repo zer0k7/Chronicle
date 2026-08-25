@@ -289,67 +289,87 @@ class UsageStatsRepositoryImpl(
         val manager = usageStatsManager ?: return emptyMap()
         val usageMap = mutableMapOf<String, ParsedUsage>()
 
-        // 1. Primary Source of Truth: Query aggregated stats from system usage database for [startTime, queryEnd]
-        // This ensures games, multi-activity apps, and earlier morning sessions are never dropped
-        try {
-            val aggregatedStats = manager.queryAndAggregateUsageStats(startTime, queryEnd)
-            aggregatedStats?.forEach { (pkg, stat) ->
-                if (pkg.isNotBlank() && (stat.totalTimeInForeground > 0 || stat.lastTimeUsed >= startTime)) {
+        // Look back 24 hours prior to startTime to capture any ongoing session running across midnight
+        val queryBufferStart = maxOf(0L, startTime - (24 * 3600 * 1000L))
+        val events = manager.queryEvents(queryBufferStart, queryEnd) ?: return emptyMap()
+
+        val event = UsageEvents.Event()
+        var currentForegroundPkg: String? = null
+        var currentForegroundStart: Long = 0L
+
+        fun closeSession(pkg: String, sessionStart: Long, sessionEnd: Long) {
+            val effectiveStart = maxOf(sessionStart, startTime)
+            val effectiveEnd = minOf(sessionEnd, queryEnd)
+            if (effectiveEnd > effectiveStart) {
+                val duration = effectiveEnd - effectiveStart
+                // Sanity cap: continuous single session max 12 hours
+                if (duration in 1..(12 * 3600 * 1000L)) {
                     val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
-                    parsed.totalForegroundMillis = stat.totalTimeInForeground
-                    parsed.lastTimeUsedMillis = stat.lastTimeUsed
+                    parsed.totalForegroundMillis += duration
+                    if (effectiveEnd > parsed.lastTimeUsedMillis) {
+                        parsed.lastTimeUsedMillis = effectiveEnd
+                    }
                 }
             }
-        } catch (_: Exception) {
-            // Fallback gracefully if system call fails
         }
 
-        // 2. Query event stream for launch counts and live in-progress foreground sessions
-        try {
-            val events = manager.queryEvents(startTime, queryEnd)
-            if (events != null) {
-                val event = UsageEvents.Event()
-                var lastResumedPkg: String? = null
-                var lastResumedTime: Long = 0L
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            val pkg = event.packageName ?: continue
+            val time = event.timeStamp
 
-                while (events.hasNextEvent()) {
-                    events.getNextEvent(event)
-                    val pkg = event.packageName ?: continue
-                    val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
+            when (event.eventType) {
+                // App moved to foreground / resumed
+                UsageEvents.Event.ACTIVITY_RESUMED,
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    // If a different app was active in the foreground, close its session at this exact timestamp
+                    if (currentForegroundPkg != null && currentForegroundPkg != pkg) {
+                        closeSession(currentForegroundPkg!!, currentForegroundStart, time)
+                        currentForegroundPkg = null
+                    }
 
-                    when (event.eventType) {
-                        UsageEvents.Event.ACTIVITY_RESUMED -> {
-                            lastResumedPkg = pkg
-                            lastResumedTime = event.timeStamp
-                            parsed.launchCount++
-                            if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                                parsed.lastTimeUsedMillis = event.timeStamp
-                            }
-                        }
-                        UsageEvents.Event.ACTIVITY_PAUSED,
-                        UsageEvents.Event.ACTIVITY_STOPPED -> {
-                            if (lastResumedPkg == pkg) {
-                                lastResumedPkg = null
-                            }
-                            if (event.timeStamp > parsed.lastTimeUsedMillis) {
-                                parsed.lastTimeUsedMillis = event.timeStamp
-                            }
+                    if (currentForegroundPkg == null) {
+                        currentForegroundPkg = pkg
+                        currentForegroundStart = time
+                    }
+
+                    // Count launches that occurred within the target window
+                    if (time in startTime..queryEnd) {
+                        val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
+                        parsed.launchCount++
+                        if (time > parsed.lastTimeUsedMillis) {
+                            parsed.lastTimeUsedMillis = time
                         }
                     }
                 }
 
-                // If an app is still in the foreground right now, add ongoing live session delta
-                val now = System.currentTimeMillis()
-                if (lastResumedPkg != null && lastResumedTime > 0L && queryEnd >= now) {
-                    val ongoingDelta = now - lastResumedTime
-                    if (ongoingDelta in 1..(6 * 3600 * 1000L)) {
-                        val parsed = usageMap.getOrPut(lastResumedPkg) { ParsedUsage() }
-                        parsed.totalForegroundMillis += ongoingDelta
+                // App moved to background / paused / stopped
+                UsageEvents.Event.ACTIVITY_PAUSED,
+                UsageEvents.Event.ACTIVITY_STOPPED,
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    if (currentForegroundPkg == pkg) {
+                        closeSession(pkg, currentForegroundStart, time)
+                        currentForegroundPkg = null
+                    }
+                }
+
+                // Screen turned off / phone locked / device shutdown
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE,
+                UsageEvents.Event.KEYGUARD_SHOWN,
+                UsageEvents.Event.DEVICE_SHUTDOWN -> {
+                    if (currentForegroundPkg != null) {
+                        closeSession(currentForegroundPkg!!, currentForegroundStart, time)
+                        currentForegroundPkg = null
                     }
                 }
             }
-        } catch (_: Exception) {
-            // Non-fatal
+        }
+
+        // Close any active session still in foreground at queryEnd
+        val now = System.currentTimeMillis()
+        val finalEnd = minOf(now, queryEnd)
+        if (currentForegroundPkg != null && finalEnd > currentForegroundStart) {
+            closeSession(currentForegroundPkg!!, currentForegroundStart, finalEnd)
         }
 
         return usageMap
