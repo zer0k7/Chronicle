@@ -1,4 +1,4 @@
-## What's New in Chronicle v1.0.8
+## What's New in Chronicle v1.0.9
 
 ### 1. Conscious Waking Life Calculator
 * **16-Hour Waking Life Metric:** Translates screen time into the true percentage of your conscious awake life spent looking at screens (e.g., `28.1% of conscious waking life`).
@@ -40,4 +40,5 @@
 ## Installation
 
 * **In-App Update:** Open Chronicle -> Settings -> Check for Updates.
-* **Manual Install:** Download `chronicle-v1.0.8.apk` below and open to install over existing builds.
+* **Manual Install:** Download `chronicle-v1.0.9.apk` below and open to install over existing builds.
+
