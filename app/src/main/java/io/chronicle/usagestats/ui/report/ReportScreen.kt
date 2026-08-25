@@ -333,20 +333,21 @@ fun ReportScreen(
             ) {
                 val categories = listOf(
                     AppCategory.ALL, AppCategory.PRODUCTIVITY, AppCategory.SOCIAL,
-                    AppCategory.ENTERTAINMENT, AppCategory.GAMES, AppCategory.UTILITIES,
-                    AppCategory.SYSTEM, AppCategory.REMOVED, AppCategory.OTHER
+                    AppCategory.ENTERTAINMENT, AppCategory.GAMES, AppCategory.COMMUNICATION,
+                    AppCategory.UTILITIES, AppCategory.SYSTEM, AppCategory.REMOVED, AppCategory.OTHER
                 )
                 items(categories) { category ->
                     val label = when (category) {
                         AppCategory.ALL -> stringResource(R.string.category_all)
-                        AppCategory.PRODUCTIVITY -> stringResource(R.string.category_productivity)
-                        AppCategory.SOCIAL -> stringResource(R.string.category_social)
-                        AppCategory.ENTERTAINMENT -> stringResource(R.string.category_entertainment)
-                        AppCategory.GAMES -> stringResource(R.string.category_games)
-                        AppCategory.UTILITIES -> stringResource(R.string.category_utilities)
-                        AppCategory.SYSTEM -> stringResource(R.string.category_system)
+                        AppCategory.PRODUCTIVITY -> stringResource(R.string.category_name_productivity)
+                        AppCategory.SOCIAL -> stringResource(R.string.category_name_social)
+                        AppCategory.ENTERTAINMENT -> stringResource(R.string.category_name_entertainment)
+                        AppCategory.GAMES -> stringResource(R.string.category_name_games)
+                        AppCategory.COMMUNICATION -> stringResource(R.string.category_name_communication)
+                        AppCategory.UTILITIES -> stringResource(R.string.category_name_utilities)
+                        AppCategory.SYSTEM -> stringResource(R.string.category_name_system)
                         AppCategory.REMOVED -> stringResource(R.string.category_removed)
-                        AppCategory.OTHER -> stringResource(R.string.category_other)
+                        AppCategory.OTHER -> stringResource(R.string.category_name_other)
                     }
                     FilterChip(
                         selected = filter.selectedCategory == category,
