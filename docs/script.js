@@ -7,6 +7,17 @@
   let cachedRelease = null;
   let cachedApkAsset = null;
 
+  function showToast(msg) {
+    const toast = document.getElementById('toast');
+    if (!toast) return;
+    const span = toast.querySelector('span');
+    if (span) span.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(() => {
+      toast.classList.remove('show');
+    }, 3500);
+  }
+
   async function fetchLatestRelease() {
     try {
       const res = await fetch(API_URL, {
@@ -26,25 +37,17 @@
   function formatMarkdown(text) {
     if (!text) return '<p>No release notes provided.</p>';
     
-    // Simple, clean safe markdown formatter
     let html = text
-      // Headers
       .replace(/^### (.*$)/gim, '<h4>$1</h4>')
       .replace(/^## (.*$)/gim, '<h3>$1</h3>')
       .replace(/^# (.*$)/gim, '<h2>$1</h2>')
-      // Bold
       .replace(/\*\*(.*?)\*\*/gim, '<strong>$1</strong>')
-      // Lists
       .replace(/^\* (.*$)/gim, '<li>$1</li>')
       .replace(/^- (.*$)/gim, '<li>$1</li>')
-      // Dividers
       .replace(/^---$/gim, '<hr style="border:none;border-top:1px solid var(--border);margin:12px 0;">')
-      // Newlines
       .replace(/\n\n+/g, '<br/>');
 
-    // Wrap li items into ul
     html = html.replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>');
-    // Clean up adjacent ul tags
     html = html.replace(/<\/ul>\s*<ul>/g, '');
 
     return html;
@@ -83,7 +86,6 @@
         releaseNotesEl.innerHTML = formatMarkdown(release.body);
       }
     } else {
-      // Fallback
       if (heroVersionEl) heroVersionEl.textContent = fallbackVersion;
       if (downloadVersionEl) downloadVersionEl.textContent = fallbackVersion;
       if (releaseDateEl) releaseDateEl.textContent = fallbackDateStr;
@@ -94,53 +96,62 @@
     }
   }
 
-  window.triggerDownload = async function() {
+  window.triggerDownload = async function(customUrl, customFilename, element) {
     const btn = document.getElementById('download-btn');
-    if (!btn) return;
+    const originalText = btn ? btn.innerHTML : 'Download APK';
 
-    const originalText = btn.innerHTML;
-    btn.textContent = 'Fetching...';
-    btn.disabled = true;
+    if (btn) {
+      btn.textContent = 'Preparing Download...';
+      btn.disabled = true;
+    }
 
     try {
-      if (!cachedRelease) {
+      if (!cachedRelease && !customUrl) {
         await fetchLatestRelease();
       }
 
-      let downloadUrl = null;
-      let filename = 'chronicle-latest.apk';
+      let downloadUrl = customUrl;
+      let filename = customFilename || 'chronicle-latest.apk';
 
-      if (cachedApkAsset && cachedApkAsset.browser_download_url) {
-        downloadUrl = cachedApkAsset.browser_download_url;
-        filename = cachedApkAsset.name;
-      } else {
-        // Fallback static download URL
-        const fallbackVersion = document.body.dataset.version || 'v1.0.9';
-        downloadUrl = `https://github.com/${GITHUB_REPO}/releases/download/${fallbackVersion}/chronicle-${fallbackVersion}.apk`;
-        filename = `chronicle-${fallbackVersion}.apk`;
+      if (!downloadUrl) {
+        if (cachedApkAsset && cachedApkAsset.browser_download_url) {
+          downloadUrl = cachedApkAsset.browser_download_url;
+          filename = cachedApkAsset.name;
+        } else {
+          const fallbackVersion = document.body.dataset.version || 'v1.0.9';
+          downloadUrl = `https://github.com/${GITHUB_REPO}/releases/download/${fallbackVersion}/chronicle-${fallbackVersion}.apk`;
+          filename = `chronicle-${fallbackVersion}.apk`;
+        }
       }
 
-      // Direct download trigger without navigation
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = filename;
-      a.style.display = 'none';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      showToast('Downloading ' + filename + '...');
 
-      btn.textContent = 'Download Started';
+      // Silent hidden iframe download trigger (prevents any redirection or tab opening)
+      const iframe = document.createElement('iframe');
+      iframe.style.display = 'none';
+      iframe.src = downloadUrl;
+      document.body.appendChild(iframe);
+
       setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-      }, 3000);
+        if (iframe && iframe.parentNode) {
+          iframe.parentNode.removeChild(iframe);
+        }
+      }, 60000);
+
+      if (btn) {
+        btn.textContent = 'Download Started';
+        setTimeout(() => {
+          btn.innerHTML = originalText;
+          btn.disabled = false;
+        }, 3000);
+      }
     } catch (err) {
-      console.error('Download trigger error:', err);
-      btn.textContent = 'Download Failed — Retry';
-      setTimeout(() => {
-        btn.innerHTML = originalText;
+      console.error('Download error:', err);
+      showToast('Download error. Retrying direct link...');
+      if (btn) {
+        btn.textContent = 'Download APK';
         btn.disabled = false;
-      }, 3000);
+      }
     }
   };
 
@@ -160,7 +171,6 @@
     }
   };
 
-  // Run on DOM load
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initPageData);
   } else {

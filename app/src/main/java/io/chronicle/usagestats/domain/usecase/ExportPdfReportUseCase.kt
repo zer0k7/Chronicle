@@ -11,6 +11,7 @@ import androidx.core.content.FileProvider
 import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.RangeUsageReport
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -50,7 +51,7 @@ class ExportPdfReportUseCase(
 
                 if (pageIndex == 0) {
                     // Summary Card on first page
-                    drawSummaryCard(canvas, paint, summary)
+                    drawSummaryCard(canvas, paint, summary.totalScreenTimeMillis, summary.appCount, summary.topAppLabel)
                 }
 
                 // Table Items for this page
@@ -88,6 +89,61 @@ class ExportPdfReportUseCase(
         }
     }
 
+    suspend fun executeRange(report: RangeUsageReport): Result<Uri> = withContext(Dispatchers.IO) {
+        try {
+            val pdfDocument = PdfDocument()
+            val apps = report.topApps
+            val appsPerPage = 18
+            val totalPages = if (apps.isEmpty()) 1 else ((apps.size + appsPerPage - 1) / appsPerPage)
+
+            for (pageIndex in 0 until totalPages) {
+                val pageInfo = PdfDocument.PageInfo.Builder(pageWidth, pageHeight, pageIndex + 1).create()
+                val page = pdfDocument.startPage(pageInfo)
+                val canvas = page.canvas
+
+                canvas.drawColor(Color.WHITE)
+                val paint = Paint(Paint.ANTI_ALIAS_FLAG)
+
+                // Header
+                drawHeader(canvas, paint, pageIndex + 1, totalPages, report.startDateEpochMillis, report.endDateEpochMillis)
+
+                if (pageIndex == 0) {
+                    val topLabel = report.topApps.firstOrNull()?.appLabel
+                    drawSummaryCard(canvas, paint, report.totalScreenTimeMillis, report.topApps.size, topLabel, report.dailyAverageMillis, report.daysCount)
+                }
+
+                val startAppIndex = pageIndex * appsPerPage
+                val endAppIndex = minOf(startAppIndex + appsPerPage, apps.size)
+                val pageApps = if (apps.isNotEmpty()) apps.subList(startAppIndex, endAppIndex) else emptyList()
+
+                val tableStartY = if (pageIndex == 0) 240f else 110f
+                drawTable(canvas, paint, pageApps, report.totalScreenTimeMillis, tableStartY)
+
+                drawFooter(canvas, paint, pageIndex + 1, totalPages)
+                pdfDocument.finishPage(page)
+            }
+
+            val reportsDir = File(context.cacheDir, "reports").apply { mkdirs() }
+            val fileName = "chronicle_dossier_${System.currentTimeMillis()}.pdf"
+            val outputFile = File(reportsDir, fileName)
+
+            FileOutputStream(outputFile).use { out ->
+                pdfDocument.writeTo(out)
+            }
+            pdfDocument.close()
+
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                outputFile
+            )
+
+            Result.success(uri)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private fun drawHeader(
         canvas: Canvas,
         paint: Paint,
@@ -96,7 +152,6 @@ class ExportPdfReportUseCase(
         startMillis: Long,
         endMillis: Long
     ) {
-        // App Title
         paint.color = Color.parseColor("#0F172A")
         paint.textSize = 20f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
@@ -105,9 +160,8 @@ class ExportPdfReportUseCase(
         paint.color = Color.parseColor("#0284C7")
         paint.textSize = 10f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("USAGE ANALYTICS REPORT", margin, margin + 30f, paint)
+        canvas.drawText("USAGE ANALYTICS DOSSIER", margin, margin + 30f, paint)
 
-        // Date Info (Right Aligned)
         paint.color = Color.parseColor("#475569")
         paint.textSize = 9f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
@@ -119,15 +173,22 @@ class ExportPdfReportUseCase(
         canvas.drawText(dateText, pageWidth - margin - dateWidth, margin + 15f, paint)
         canvas.drawText(tzText, pageWidth - margin - tzWidth, margin + 28f, paint)
 
-        // Divider Line
         paint.color = Color.parseColor("#E2E8F0")
         paint.strokeWidth = 1.5f
         canvas.drawLine(margin, margin + 40f, pageWidth - margin, margin + 40f, paint)
     }
 
-    private fun drawSummaryCard(canvas: Canvas, paint: Paint, summary: DailyUsageSummary) {
+    private fun drawSummaryCard(
+        canvas: Canvas,
+        paint: Paint,
+        totalScreenTimeMillis: Long,
+        appCount: Int,
+        topAppLabel: String?,
+        dailyAverageMillis: Long? = null,
+        daysCount: Int = 1
+    ) {
         val cardTop = 95f
-        val cardHeight = 110f
+        val cardHeight = 120f
         val cardRight = pageWidth - margin
 
         // Background Box
@@ -141,43 +202,49 @@ class ExportPdfReportUseCase(
         paint.strokeWidth = 1f
         canvas.drawRoundRect(margin, cardTop, cardRight, cardTop + cardHeight, 8f, 8f, paint)
 
-        // Card Content
         paint.style = Paint.Style.FILL
 
-        // Metric 1: Total Screen Time
+        // Total Screen Time
         paint.color = Color.parseColor("#64748B")
         paint.textSize = 9f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("TOTAL SCREEN TIME", margin + 20f, cardTop + 30f, paint)
+        canvas.drawText("TOTAL SCREEN TIME", margin + 20f, cardTop + 28f, paint)
 
         paint.color = Color.parseColor("#0F172A")
-        paint.textSize = 22f
+        paint.textSize = 20f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText(DateTimeUtils.formatDuration(summary.totalScreenTimeMillis), margin + 20f, cardTop + 60f, paint)
+        canvas.drawText(DateTimeUtils.formatDuration(totalScreenTimeMillis), margin + 20f, cardTop + 55f, paint)
 
-        // Metric 2: Active Applications
+        if (dailyAverageMillis != null && daysCount > 1) {
+            paint.color = Color.parseColor("#0284C7")
+            paint.textSize = 9f
+            paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            canvas.drawText("Avg: ${DateTimeUtils.formatDuration(dailyAverageMillis)} / day ($daysCount days)", margin + 20f, cardTop + 78f, paint)
+        }
+
+        // Active Applications
         val col2X = margin + 200f
         paint.color = Color.parseColor("#64748B")
         paint.textSize = 9f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("APPLICATIONS", col2X, cardTop + 30f, paint)
+        canvas.drawText("APPLICATIONS", col2X, cardTop + 28f, paint)
 
         paint.color = Color.parseColor("#0F172A")
-        paint.textSize = 22f
+        paint.textSize = 20f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        canvas.drawText("${summary.appCount} Apps", col2X, cardTop + 60f, paint)
+        canvas.drawText("$appCount Apps", col2X, cardTop + 55f, paint)
 
-        // Metric 3: Top Application
+        // Most Used App
         val col3X = margin + 350f
         paint.color = Color.parseColor("#64748B")
         paint.textSize = 9f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
-        canvas.drawText("MOST USED APP", col3X, cardTop + 30f, paint)
+        canvas.drawText("MOST USED APP", col3X, cardTop + 28f, paint)
 
         paint.color = Color.parseColor("#0F172A")
         paint.textSize = 14f
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
-        val topLabel = summary.topAppLabel ?: "N/A"
+        val topLabel = topAppLabel ?: "N/A"
         val truncatedTop = if (topLabel.length > 18) topLabel.take(16) + "…" else topLabel
         canvas.drawText(truncatedTop, col3X, cardTop + 55f, paint)
     }
@@ -214,7 +281,6 @@ class ExportPdfReportUseCase(
 
         currentY += 24f
 
-        // Table Rows
         paint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.NORMAL)
         paint.textSize = 9f
 
@@ -226,7 +292,6 @@ class ExportPdfReportUseCase(
                 canvas.drawRect(margin, currentY, pageWidth - margin, currentY + rowHeight, paint)
             }
 
-            // Text
             paint.color = if (app.isRemoved) Color.parseColor("#DC2626") else Color.parseColor("#0F172A")
             val label = if (app.isRemoved) "${app.appLabel} (Removed)" else app.appLabel
             val truncatedLabel = if (label.length > 28) label.take(26) + "…" else label

@@ -1,10 +1,14 @@
 package io.chronicle.usagestats.domain.usecase
 
 import io.chronicle.usagestats.domain.model.AppCategory
+import io.chronicle.usagestats.domain.model.DopamineDebt
 import io.chronicle.usagestats.domain.model.GhostOpensInsight
 import io.chronicle.usagestats.domain.model.HabitInsights
 import io.chronicle.usagestats.domain.model.HourlyUsageSlot
+import io.chronicle.usagestats.domain.model.LifeClockProjection
 import io.chronicle.usagestats.domain.model.MorningDoomscroll
+import io.chronicle.usagestats.domain.model.PhantomUnlocks
+import io.chronicle.usagestats.domain.model.RangeUsageReport
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.domain.model.TrendComparison
@@ -112,5 +116,50 @@ class UsageInsightsTest {
 
         assertEquals(2100000L, doom.durationMillis)
         assertEquals("YouTube", doom.topAppLabel)
+    }
+
+    @Test
+    fun testLifeClockProjection_Calculation() {
+        val dailyAverageMillis = (4.8 * 3600 * 1000).toLong() // 4.8h/day
+        val yearsLostBy75 = (dailyAverageMillis.toDouble() / (24.0 * 3600.0 * 1000.0)) * 50.0 // 50-yr baseline
+        val consciousPct = (dailyAverageMillis.toDouble() / (16.0 * 3600.0 * 1000.0)) * 100.0
+
+        val lifeClock = LifeClockProjection(
+            dailyAverageMillis = dailyAverageMillis,
+            yearsLostBy75 = yearsLostBy75,
+            consciousPercentage = consciousPct
+        )
+
+        assertEquals(10.0, lifeClock.yearsLostBy75, 0.01)
+        assertEquals(30.0, lifeClock.consciousPercentage, 0.01)
+    }
+
+    @Test
+    fun testDopamineDebt_Calculation() {
+        val actualMillis = (4.5 * 3600 * 1000).toLong() // 4.5h
+        val baselineMillis = (2.5 * 3600 * 1000).toLong() // 2.5h baseline
+        val debtMillis = (actualMillis - baselineMillis).coerceAtLeast(0L) // 2.0h excess
+        val fastMinutes = ((debtMillis.toDouble() / 3_600_000.0) * 30.0).toInt() // 60 mins fast
+
+        val dopamineDebt = DopamineDebt(
+            weeklyActualMillis = actualMillis,
+            weeklyBaselineMillis = baselineMillis,
+            debtMillis = debtMillis,
+            recommendedFastMinutes = fastMinutes
+        )
+
+        assertEquals(7200000L, dopamineDebt.debtMillis)
+        assertEquals(60, dopamineDebt.recommendedFastMinutes)
+    }
+
+    @Test
+    fun testPhantomUnlocks_Structure() {
+        val phantom = PhantomUnlocks(
+            count = 14,
+            totalQuickChecks = 28
+        )
+
+        assertEquals(14, phantom.count)
+        assertEquals(28, phantom.totalQuickChecks)
     }
 }

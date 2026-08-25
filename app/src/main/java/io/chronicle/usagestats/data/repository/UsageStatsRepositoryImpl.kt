@@ -11,11 +11,15 @@ import io.chronicle.usagestats.data.local.entity.DailySummaryEntity
 import io.chronicle.usagestats.domain.model.AppCategory
 import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.DopamineDebt
 import io.chronicle.usagestats.domain.model.GhostOpensInsight
 import io.chronicle.usagestats.domain.model.HabitInsights
 import io.chronicle.usagestats.domain.model.HourlyUsageSlot
+import io.chronicle.usagestats.domain.model.LifeClockProjection
 import io.chronicle.usagestats.domain.model.LongestSession
 import io.chronicle.usagestats.domain.model.MorningDoomscroll
+import io.chronicle.usagestats.domain.model.PhantomUnlocks
+import io.chronicle.usagestats.domain.model.RangeUsageReport
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.domain.model.TrendComparison
@@ -332,6 +336,84 @@ class UsageStatsRepositoryImpl(
         )
     }
 
+    override fun getRangeReport(
+        startDateEpochMillis: Long,
+        endDateEpochMillis: Long
+    ): Flow<RangeUsageReport> {
+        val start = DateTimeUtils.getStartOfDay(startDateEpochMillis)
+        val end = DateTimeUtils.getEndOfDay(endDateEpochMillis)
+
+        return usageDao.getUsageForRange(start, end).map { entities ->
+            val totalTime = entities.sumOf { it.foregroundTimeMillis }
+            val dailySummariesEntities = usageDao.getSummariesInRangeDirect(start, end)
+            val daysCount = maxOf(1, dailySummariesEntities.size)
+            val dailyAverage = totalTime / daysCount
+
+            val appList = entities.groupBy { it.packageName }.map { (pkg, list) ->
+                val appTotal = list.sumOf { it.foregroundTimeMillis }
+                val launches = list.sumOf { it.launchCount }
+                val isRemoved = list.any { it.isRemoved } || !appIconHelper.isAppInstalled(pkg)
+                AppUsageInfo(
+                    packageName = pkg,
+                    appLabel = list.firstOrNull()?.appLabel ?: appIconHelper.getAppLabel(pkg),
+                    totalTimeForegroundMillis = appTotal,
+                    launchCount = launches,
+                    lastTimeUsedMillis = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L,
+                    avgSessionDurationMillis = if (launches > 0) appTotal / launches else 0L,
+                    isRemoved = isRemoved,
+                    category = if (isRemoved) AppCategory.REMOVED else appIconHelper.getAppCategory(pkg)
+                )
+            }.sortedByDescending { it.totalTimeForegroundMillis }
+
+            val catMap = mutableMapOf<AppCategory, Long>()
+            for (app in appList) {
+                catMap[app.category] = (catMap[app.category] ?: 0L) + app.totalTimeForegroundMillis
+            }
+
+            val summaries = dailySummariesEntities.map { s ->
+                DailyUsageSummary(
+                    dateEpochMillis = s.dateStartEpochMillis,
+                    totalScreenTimeMillis = s.totalScreenTimeMillis,
+                    topAppPackage = s.topPackageName,
+                    topAppLabel = s.topAppLabel,
+                    appCount = s.activeAppsCount
+                )
+            }
+
+            // Real calculations for Life Clock & Dopamine Debt over the range
+            val yearsLost = (dailyAverage.toDouble() / (24.0 * 3600.0 * 1000.0)) * 50.0
+            val consciousPct = ((dailyAverage.toDouble() / (16.0 * 3600.0 * 1000.0)) * 100.0).coerceIn(0.0, 100.0)
+            val lifeClock = LifeClockProjection(dailyAverage, yearsLost, consciousPct)
+
+            val baseline = daysCount * 2.5 * 3600 * 1000L
+            val debt = (totalTime - baseline.toLong()).coerceAtLeast(0L)
+            val fastMins = ((debt.toDouble() / 3_600_000.0) * 30.0).toInt().coerceIn(0, 480)
+            val dopamineDebt = DopamineDebt(totalTime, baseline.toLong(), debt, fastMins)
+
+            RangeUsageReport(
+                startDateEpochMillis = start,
+                endDateEpochMillis = end,
+                totalScreenTimeMillis = totalTime,
+                dailyAverageMillis = dailyAverage,
+                daysCount = daysCount,
+                totalUnlocks = 0,
+                topApps = appList,
+                categoryBreakdown = catMap,
+                dailySummaries = summaries,
+                lifeClock = lifeClock,
+                dopamineDebt = dopamineDebt
+            )
+        }.flowOn(Dispatchers.IO)
+    }
+
+    override suspend fun getEarliestRecordedDate(): Long? = withContext(Dispatchers.IO) {
+        usageDao.getEarliestRecordedDate()
+    }
+
+    override suspend fun getTotalDaysTracked(): Int = withContext(Dispatchers.IO) {
+        usageDao.getTotalDaysTracked()
+    }
+
     private data class ParsedUsage(
         var totalForegroundMillis: Long = 0L,
         var launchCount: Int = 0,
@@ -437,6 +519,11 @@ class UsageStatsRepositoryImpl(
             }
         }
 
+        var lastUnlockForPhantom: Long? = null
+        var appsLaunchedDuringUnlock = 0
+        var phantomUnlocksCount = 0
+        var totalQuickChecksCount = 0
+
         while (events.hasNextEvent()) {
             events.getNextEvent(event)
             val pkg = event.packageName ?: continue
@@ -446,6 +533,7 @@ class UsageStatsRepositoryImpl(
             when (event.eventType) {
                 UsageEvents.Event.ACTIVITY_RESUMED,
                 UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    appsLaunchedDuringUnlock++
                     val activities = activeActivities.getOrPut(pkg) { mutableSetOf() }
                     val wasEmpty = activities.isEmpty()
                     activities.add(className)
@@ -480,6 +568,8 @@ class UsageStatsRepositoryImpl(
                 UsageEvents.Event.KEYGUARD_HIDDEN -> {
                     if (time in startTime..queryEnd) {
                         deviceUnlocks++
+                        lastUnlockForPhantom = time
+                        appsLaunchedDuringUnlock = 0
                         val hourIdx = (((time - startTime) / (3600 * 1000L)).toInt()).coerceIn(0, 23)
                         hourlyUnlocks[hourIdx]++
                         if (time >= fourAmStart && firstUnlockTimestamp == null) {
@@ -493,6 +583,16 @@ class UsageStatsRepositoryImpl(
                 UsageEvents.Event.DEVICE_SHUTDOWN -> {
                     if (time in startTime..queryEnd) {
                         lastLockTimestamp = time
+                        if (lastUnlockForPhantom != null) {
+                            val unlockDuration = time - lastUnlockForPhantom!!
+                            if (unlockDuration in 1..10_000L && appsLaunchedDuringUnlock == 0) {
+                                phantomUnlocksCount++
+                            }
+                            if (unlockDuration in 1..15_000L) {
+                                totalQuickChecksCount++
+                            }
+                            lastUnlockForPhantom = null
+                        }
                     }
                     val activePkgs = sessionStartTimes.keys.toList()
                     for (activePkg in activePkgs) {
@@ -636,6 +736,33 @@ class UsageStatsRepositoryImpl(
             annualProjectedDays = annualDays
         )
 
+        // Life Clock: Remaining life spent on screens until age 75 (50 year baseline)
+        val yearsLostBy75 = (totalTime.toDouble() / (24.0 * 3600.0 * 1000.0)) * 50.0
+        val lifeClock = LifeClockProjection(
+            dailyAverageMillis = totalTime,
+            yearsLostBy75 = yearsLostBy75,
+            consciousPercentage = wakingPct
+        )
+
+        // Dopamine Debt: excess over 2.5h baseline (9,000,000 ms)
+        val baselineMillis = 9_000_000L
+        val debtMillis = (totalTime - baselineMillis).coerceAtLeast(0L)
+        val fastMinutes = ((debtMillis.toDouble() / 3_600_000.0) * 30.0).toInt().coerceIn(0, 240)
+        val dopamineDebt = DopamineDebt(
+            weeklyActualMillis = totalTime,
+            weeklyBaselineMillis = baselineMillis,
+            debtMillis = debtMillis,
+            recommendedFastMinutes = fastMinutes
+        )
+
+        // Phantom Unlocks
+        val phantomInsight = if (phantomUnlocksCount > 0 || totalQuickChecksCount > 0) {
+            PhantomUnlocks(
+                count = phantomUnlocksCount,
+                totalQuickChecks = totalQuickChecksCount
+            )
+        } else null
+
         val habitInsights = HabitInsights(
             deviceUnlocks = maxOf(deviceUnlocks, usageMap.values.sumOf { it.launchCount }),
             firstUnlockEpochMillis = firstUnlockTimestamp,
@@ -651,7 +778,10 @@ class UsageStatsRepositoryImpl(
             hourlyUnlocks = hourlyUnlocks.toList(),
             ghostOpens = ghostInsight,
             morningDoomscroll = morningDoomscrollInsight,
-            wakingLifeImpact = wakingLifeImpact
+            wakingLifeImpact = wakingLifeImpact,
+            lifeClock = lifeClock,
+            dopamineDebt = dopamineDebt,
+            phantomUnlocks = phantomInsight
         )
 
         return DayAnalyticsResult(

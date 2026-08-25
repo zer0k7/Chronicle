@@ -45,6 +45,18 @@ interface UsageDao {
     @Query("SELECT DISTINCT packageName FROM app_usage_records")
     suspend fun getAllRecordedPackageNames(): List<String>
 
+    @Query("SELECT MIN(dateStartEpochMillis) FROM daily_summaries")
+    suspend fun getEarliestRecordedDate(): Long?
+
+    @Query("SELECT COUNT(*) FROM daily_summaries")
+    suspend fun getTotalDaysTracked(): Int
+
+    @Query("SELECT * FROM daily_summaries ORDER BY dateStartEpochMillis ASC")
+    suspend fun getAllSummariesDirect(): List<DailySummaryEntity>
+
+    @Query("SELECT * FROM daily_summaries WHERE dateStartEpochMillis >= :startEpoch AND dateStartEpochMillis < :endEpoch ORDER BY dateStartEpochMillis ASC")
+    suspend fun getSummariesInRangeDirect(startEpoch: Long, endEpoch: Long): List<DailySummaryEntity>
+
     @Transaction
     suspend fun upsertDayUsageAndSummary(
         usageRecords: List<AppUsageEntity>,

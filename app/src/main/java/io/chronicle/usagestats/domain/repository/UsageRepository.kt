@@ -25,4 +25,10 @@ interface UsageRepository {
     suspend fun getTodayTotalScreenTimeMillis(): Long
 
     suspend fun getTodaySummary(): DailyUsageSummary
+
+    fun getRangeReport(startDateEpochMillis: Long, endDateEpochMillis: Long): Flow<io.chronicle.usagestats.domain.model.RangeUsageReport>
+
+    suspend fun getEarliestRecordedDate(): Long?
+
+    suspend fun getTotalDaysTracked(): Int
 }

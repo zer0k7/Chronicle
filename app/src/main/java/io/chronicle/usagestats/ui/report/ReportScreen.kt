@@ -418,6 +418,13 @@ fun ReportScreen(
                         }
                     }
 
+                    // Advanced Psychological Habit Metrics Card
+                    if (habits != null) {
+                        item {
+                            io.chronicle.usagestats.ui.components.AdvancedPsychologyCard(insights = habits)
+                        }
+                    }
+
                     // App List Header
                     item {
                         Text(
@@ -437,6 +444,17 @@ fun ReportScreen(
                     item { Spacer(modifier = Modifier.height(88.dp)) }
                 }
             }
+        }
+
+        // Export Scope & Format Dialog
+        if (uiState.showExportDialog) {
+            io.chronicle.usagestats.ui.components.ExportOptionsDialog(
+                currentDate = selectedDate,
+                onDismiss = { viewModel.hideExportDialog() },
+                onExport = { range, format, startMillis, endMillis ->
+                    viewModel.exportWithScope(context, range, format, startMillis, endMillis)
+                }
+            )
         }
 
         // Snackbar

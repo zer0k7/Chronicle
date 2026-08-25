@@ -297,6 +297,11 @@ fun TimelineScreen(
                             io.chronicle.usagestats.ui.components.WakingLifeCard(insights = habits)
                         }
                     }
+                    if (habits.lifeClock != null || habits.dopamineDebt != null || habits.phantomUnlocks != null) {
+                        item {
+                            io.chronicle.usagestats.ui.components.AdvancedPsychologyCard(insights = habits)
+                        }
+                    }
                 }
 
                 // 5. Weekly Bar Chart (Week view only)

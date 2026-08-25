@@ -64,6 +64,24 @@ data class WakingLifeImpact(
     val annualProjectedDays: Int  // Full 24h days per year
 )
 
+data class LifeClockProjection(
+    val dailyAverageMillis: Long,
+    val yearsLostBy75: Double,
+    val consciousPercentage: Double
+)
+
+data class DopamineDebt(
+    val weeklyActualMillis: Long,
+    val weeklyBaselineMillis: Long,
+    val debtMillis: Long,
+    val recommendedFastMinutes: Int
+)
+
+data class PhantomUnlocks(
+    val count: Int,
+    val totalQuickChecks: Int
+)
+
 data class HabitInsights(
     val deviceUnlocks: Int = 0,
     val firstUnlockEpochMillis: Long? = null,
@@ -79,7 +97,10 @@ data class HabitInsights(
     val hourlyUnlocks: List<Int> = emptyList(),
     val ghostOpens: GhostOpensInsight? = null,
     val morningDoomscroll: MorningDoomscroll? = null,
-    val wakingLifeImpact: WakingLifeImpact? = null
+    val wakingLifeImpact: WakingLifeImpact? = null,
+    val lifeClock: LifeClockProjection? = null,
+    val dopamineDebt: DopamineDebt? = null,
+    val phantomUnlocks: PhantomUnlocks? = null
 )
 
 data class TrendComparison(
@@ -105,6 +126,20 @@ data class DailyUsageSummary(
     val trendComparison: TrendComparison? = null
 )
 
+data class RangeUsageReport(
+    val startDateEpochMillis: Long,
+    val endDateEpochMillis: Long,
+    val totalScreenTimeMillis: Long,
+    val dailyAverageMillis: Long,
+    val daysCount: Int,
+    val totalUnlocks: Int,
+    val topApps: List<AppUsageInfo>,
+    val categoryBreakdown: Map<AppCategory, Long>,
+    val dailySummaries: List<DailyUsageSummary>,
+    val lifeClock: LifeClockProjection? = null,
+    val dopamineDebt: DopamineDebt? = null
+)
+
 data class TimelineData(
     val period: TimelinePeriod,
     val startEpochMillis: Long,
@@ -122,6 +157,14 @@ data class ReportFilter(
     val searchQuery: String = "",
     val selectedCategory: AppCategory = AppCategory.ALL
 )
+
+enum class ExportDateRange {
+    TODAY,
+    WEEK_7D,
+    MONTH_30D,
+    CUSTOM,
+    ALL_TIME
+}
 
 enum class ExportFormat {
     IMAGE,
