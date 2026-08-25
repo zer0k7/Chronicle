@@ -1,44 +1,47 @@
-## What's New in Chronicle v1.0.9
+# Chronicle v1.0.10
 
-### 1. Conscious Waking Life Calculator
-* **16-Hour Waking Life Metric:** Translates screen time into the true percentage of your conscious awake life spent looking at screens (e.g., `28.1% of conscious waking life`).
-* **Annual Days Lost Projection:** Computes and displays projected full 24-hour days lost across the year (e.g., `Projected 68 full days lost in 2026`).
+## What's New
 
-### 2. Ghost Reflex Opens (Micro-Habit Detector)
-* **Sub-30s Session Analysis:** Automatically isolates and flags micro-sessions under 30 seconds opened out of reflex or boredom.
-* **Reflex Breakdown:** Displays total daily ghost opens and highlights your primary offending habit app (e.g., `Ghost Opens: 24 micro-checks • Top: Instagram (18 opens)`).
+### Unbounded Multi-Year Historical Retention
+* **Permanent Local Archival:** Extended Room database engine to permanently retain usage logs across months and years without temporal truncation.
+* **Autonomous Historical Backfill:** Navigating or jumping to past dates automatically synchronizes and persists historical telemetry directly from Android UsageStatsManager.
 
-### 3. Morning Bed Doomscroll Tracker
-* **Dopamine Baseline Metric:** Measures total screen time spent on Social, Entertainment, and Gaming applications within the first 45 minutes of waking up.
-* **Bedtime Routine Contrast:** Shows exact duration and top morning distraction app directly alongside night bedtime usage.
+### Multi-Scope PDF Dossier & Infographic Export
+* **Custom Material 3 Export Scope Dialog:**
+  * **Today (Single Day):** Comprehensive single-day breakdown with 24-column timeline and top apps.
+  * **Last 7 Days (Weekly Dossier):** Executive summary, daily consumption averages, and cumulative application matrix.
+  * **Last 30 Days (Monthly Dossier):** Long-term category distribution, aggregate screen time trends, and rank lists.
+  * **Custom Date Range:** Integrated date pickers allowing arbitrary multi-day vector PDF dossier generation.
+* **Multi-Page Executive PDF Generator:** Generates formatted vector PDF reports with summary metrics, category distributions, and paginated application tables.
 
-### 4. Dynamic Reality-Check Notifications
-* **Context-Aware Notifications:** Replaces static reminders with dynamic, targeted reality checks based on actual usage:
-  * Heavy Gaming reality checks (>1.5h in games)
-  * Doomscroll alerts (>1.5h in social media)
-  * Daily Focus alerts (>4.5h screen time with low productivity score)
-  * High Discipline celebrations (>65% productive focus)
-  * Sleep recovery reminders (late-night bedtime usage)
+### Advanced Psychological & Behavioural Analytics Engine
+* **Life Clock Projection:** Mathematically projects cumulative full years of conscious waking life lost to screen consumption by age 75 based on actual daily consumption.
+* **Dopamine Debt & Screen Fasting:** Measures excess screen time against the 2.5-hour daily cognitive baseline and prescribes exact digital fasting recovery periods.
+* **Phantom Reflex Unlocks:** Detects compulsive micro-checks where the device is unlocked and locked again within 10 seconds without launching any application.
 
-### 5. App vs App Side-by-Side Comparison
-* Compare any two applications head-to-head on the Analytics tab (Screen Time, Launches, Average Session Duration).
+### Landing Page Silent Direct Downloads
+* **In-Place APK Downloading:** Updated website download handler with silent background iframe execution and bottom toast notifications to eliminate page redirects and tab opening.
 
 ---
 
-## Improvements & Bug Fixes
+## Improvements & Fixes
 
-* **In-App Auto-Updater Hardening:**
-  * Added multi-hop HTTP 302 cross-domain redirect resolution from GitHub Releases to AWS S3 storage.
-  * Implemented atomic temporary file downloads (`.tmp`) with strict 1 MB+ binary sanity validation.
-  * Resolved the package parsing error (`There was a problem while parsing the package`) caused by interrupted downloads or stale caches.
-  * Added `<external-files-path>` to `file_paths.xml` for full Android OEM compatibility.
-* **Analytics Tab Overhaul:** Renamed the 2nd navigation tab from "Reports" to "Analytics" and integrated the full suite of habit cards, category distribution, and app comparison tools.
-* **Strict Privacy & Zero Emojis:** 100% on-device processing, zero network telemetry, and full Material 3 dynamic theming.
+* **Telemetry Accuracy:** Every psychological insight and timeline aggregate is computed strictly from real hardware sensor timestamps and system usage events (zero mock or dummy entries).
+* **Database Optimization:** Added specialized Room index queries for earliest recorded timestamp, total days tracked, and date range summaries.
+* **Strict IST Calculations:** Pinned all multi-day date boundaries, historical backfills, and daily averages to Indian Standard Time (UTC+5:30).
+* **UI Polish:** Material 3 styled insight cards and dialogs with zero emojis across all layouts, strings, and notifications.
+
+---
+
+## Verification & Integrity
+
+* **Deterministic Testing:** Automated unit tests in `UsageInsightsTest` verify mathematical calculations for Life Clock projections, Dopamine Debt formulas, Phantom Unlock detections, and conscious life percentages.
+* **Architecture Integrity:** Clean Architecture + MVVM boundary separation maintained across domain models, Room DAO queries, and Jetpack Compose presentation layers.
+* **Security & Privacy:** 100% offline, zero network tracking, zero external dependencies, signed with official production keystore.
 
 ---
 
 ## Installation
 
-* **In-App Update:** Open Chronicle -> Settings -> Check for Updates.
-* **Manual Install:** Download `chronicle-v1.0.9.apk` below and open to install over existing builds.
-
+* **In-App Update:** Automatically detected on launch via the built-in SHA-256 verified OTA updater.
+* **Manual Install:** Download `chronicle-v1.0.10.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
