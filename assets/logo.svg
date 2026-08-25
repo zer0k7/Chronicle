@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="120" height="120">
+  <defs>
+    <linearGradient id="chronicle_cyan" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00E5FF" />
+      <stop offset="100%" stop-color="#00B0FF" />
+    </linearGradient>
+    <linearGradient id="chronicle_dark" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0D0F12" />
+      <stop offset="100%" stop-color="#1A1F26" />
+    </linearGradient>
+  </defs>
+  <path fill="url(#chronicle_cyan)" d="M54,16 L88,34 L88,74 L54,92 L20,74 L20,34 Z" />
+  <path fill="url(#chronicle_dark)" d="M54,25 L79,38 L79,70 L54,83 L29,70 L29,38 Z" />
+  <path fill="url(#chronicle_cyan)" d="M51,36 H57 V54 H70 V60 H51 Z" />
+  <path fill="url(#chronicle_cyan)" d="M38,48 H44 V60 H38 Z" />
+</svg>
