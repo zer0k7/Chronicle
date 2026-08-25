@@ -40,6 +40,14 @@ data class HourlyUsageSlot(
     val appBreakdown: List<AppUsageInfo> = emptyList()
 )
 
+data class LongestSession(
+    val packageName: String,
+    val appLabel: String,
+    val durationMillis: Long,
+    val startEpochMillis: Long,
+    val endEpochMillis: Long
+)
+
 data class HabitInsights(
     val deviceUnlocks: Int = 0,
     val firstUnlockEpochMillis: Long? = null,
@@ -48,13 +56,22 @@ data class HabitInsights(
     val avgSessionDurationMillis: Long = 0L,
     val fragmentationScore: Int = 0, // 0..100
     val productivityScore: Int = 0, // 0..100
-    val categoryBreakdown: Map<AppCategory, Long> = emptyMap()
+    val categoryBreakdown: Map<AppCategory, Long> = emptyMap(),
+    val longestSession: LongestSession? = null,
+    val peakUnlockHour: Int? = null,
+    val peakUnlockCount: Int = 0,
+    val hourlyUnlocks: List<Int> = emptyList()
 )
 
 data class TrendComparison(
     val previousPeriodDurationMillis: Long,
     val deltaDurationMillis: Long, // positive = more time, negative = less time
     val percentageChange: Double // e.g. -12.5%
+)
+
+data class AppComparison(
+    val appA: AppUsageInfo,
+    val appB: AppUsageInfo
 )
 
 data class DailyUsageSummary(

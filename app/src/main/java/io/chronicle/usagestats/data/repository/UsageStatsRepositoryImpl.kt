@@ -304,18 +304,27 @@ class UsageStatsRepositoryImpl(
 
     override suspend fun getTodaySummary(): DailyUsageSummary = withContext(Dispatchers.IO) {
         val todayStart = DateTimeUtils.getStartOfDay()
+        val endOfDay = DateTimeUtils.getEndOfDay(todayStart)
+        val now = System.currentTimeMillis()
+        val queryEnd = if (endOfDay > now) now else endOfDay
+
         syncUsageForDate(todayStart)
         val records = usageDao.getUsageForDateDirect(todayStart)
         val totalTime = records.sumOf { it.foregroundTimeMillis }
         val top = records.maxByOrNull { it.foregroundTimeMillis }
         val domainApps = records.map { it.toDomain(appIconHelper) }
+
+        val analytics = aggregateDayData(todayStart, queryEnd)
+
         DailyUsageSummary(
             dateEpochMillis = todayStart,
             totalScreenTimeMillis = totalTime,
             topAppPackage = top?.packageName,
             topAppLabel = top?.appLabel,
             appCount = domainApps.size,
-            apps = domainApps
+            apps = domainApps,
+            hourlySlots = analytics.hourlySlots,
+            habitInsights = analytics.habitInsights
         )
     }
 
@@ -375,6 +384,13 @@ class UsageStatsRepositoryImpl(
             }
         }
 
+        var maxSessionDuration = 0L
+        var maxSessionPkg: String? = null
+        var maxSessionStart = 0L
+        var maxSessionEnd = 0L
+
+        val hourlyUnlocks = IntArray(24) { 0 }
+
         fun closePackageSession(pkg: String, sessionEnd: Long) {
             val sessionStart = sessionStartTimes.remove(pkg) ?: return
             val effectiveStart = maxOf(sessionStart, startTime)
@@ -390,6 +406,13 @@ class UsageStatsRepositoryImpl(
                     }
                     if (effectiveEnd > parsed.lastTimeUsedMillis) {
                         parsed.lastTimeUsedMillis = effectiveEnd
+                    }
+
+                    if (duration > maxSessionDuration) {
+                        maxSessionDuration = duration
+                        maxSessionPkg = pkg
+                        maxSessionStart = effectiveStart
+                        maxSessionEnd = effectiveEnd
                     }
 
                     distributeSessionToHourlySlots(pkg, effectiveStart, effectiveEnd)
@@ -440,6 +463,8 @@ class UsageStatsRepositoryImpl(
                 UsageEvents.Event.KEYGUARD_HIDDEN -> {
                     if (time in startTime..queryEnd) {
                         deviceUnlocks++
+                        val hourIdx = (((time - startTime) / (3600 * 1000L)).toInt()).coerceIn(0, 23)
+                        hourlyUnlocks[hourIdx]++
                         if (time >= fourAmStart && firstUnlockTimestamp == null) {
                             firstUnlockTimestamp = time
                         }
@@ -535,6 +560,19 @@ class UsageStatsRepositoryImpl(
             }
         }
 
+        val longestSession = maxSessionPkg?.let {
+            LongestSession(
+                packageName = it,
+                appLabel = appIconHelper.getAppLabel(it),
+                durationMillis = maxSessionDuration,
+                startEpochMillis = maxSessionStart,
+                endEpochMillis = maxSessionEnd
+            )
+        }
+
+        val peakHourIndex = hourlyUnlocks.indices.maxByOrNull { hourlyUnlocks[it] }
+        val peakCount = peakHourIndex?.let { hourlyUnlocks[it] } ?: 0
+
         val habitInsights = HabitInsights(
             deviceUnlocks = maxOf(deviceUnlocks, usageMap.values.sumOf { it.launchCount }),
             firstUnlockEpochMillis = firstUnlockTimestamp,
@@ -543,7 +581,11 @@ class UsageStatsRepositoryImpl(
             avgSessionDurationMillis = avgSessionDuration,
             fragmentationScore = fragmentationScore,
             productivityScore = productivityScore,
-            categoryBreakdown = categoryBreakdown
+            categoryBreakdown = categoryBreakdown,
+            longestSession = longestSession,
+            peakUnlockHour = if (peakCount > 0) peakHourIndex else null,
+            peakUnlockCount = peakCount,
+            hourlyUnlocks = hourlyUnlocks.toList()
         )
 
         return DayAnalyticsResult(

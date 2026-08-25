@@ -5,7 +5,7 @@
 
     <!-- Navigation -->
     <string name="nav_timeline">Timeline</string>
-    <string name="nav_report">Report</string>
+    <string name="nav_report">Analytics</string>
     <string name="nav_settings">Settings</string>
 
     <!-- Onboarding -->
@@ -188,4 +188,35 @@
     <string name="category_name_utilities">Utilities</string>
     <string name="category_name_system">System</string>
     <string name="category_name_other">Other</string>
+
+    <!-- Motivational & Reality-Check Notifications -->
+    <string name="notification_gaming_title">Gaming Reality Check: %1$s in Games</string>
+    <string name="notification_gaming_body">You spent %1$s in %2$s today. Virtual ranks build no real-world success. Close the game and put in the real work.</string>
+    <string name="notification_social_title">Doomscroll Alert: %1$s on Social Media</string>
+    <string name="notification_social_body">Over %1$s consumed on social media today. Stop trading your focus for endless feeds. Get serious about your goals.</string>
+    <string name="notification_productivity_title">Daily Focus Alert: %1$d%% Productivity</string>
+    <string name="notification_productivity_body">Your productivity score was only %1$d%% across %2$s of screen time. Your future depends on what you do, not what you scroll.</string>
+    <string name="notification_discipline_title">High Discipline Day: %1$d%% Productive</string>
+    <string name="notification_discipline_body">Solid focus today! %1$s dedicated to productive work. Keep this standard consistent tomorrow.</string>
+    <string name="notification_sleep_title">Sleep Recovery Notice</string>
+    <string name="notification_sleep_body">Late night screen time detected. Put your device away to protect deep sleep and tomorrow\'s clarity.</string>
+
+    <!-- Pro Analytics: Binge & Peak Hours -->
+    <string name="habits_longest_session">Longest Session</string>
+    <string name="habits_peak_pickups">Peak Pickups</string>
+    <string name="habits_peak_format">%1$d unlocks (%2$s - %3$s)</string>
+
+    <!-- App vs App Comparison -->
+    <string name="comparison_title">App vs App Comparison</string>
+    <string name="comparison_select_app_a">Select App A</string>
+    <string name="comparison_select_app_b">Select App B</string>
+    <string name="comparison_vs">VS</string>
+    <string name="comparison_screen_time">Screen Time</string>
+    <string name="comparison_launches">Launches</string>
+    <string name="comparison_avg_session">Avg Session</string>
+
+    <!-- App Budgets -->
+    <string name="budget_title">Daily Usage Limits</string>
+    <string name="budget_set_limit">Set Daily Limit</string>
+    <string name="budget_minutes">Minutes per day</string>
 </resources>

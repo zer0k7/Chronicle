@@ -76,12 +76,11 @@ fun HabitsCard(
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            // 2x2 Metric Grid
+            // 2x2 Metric Grid: Pickups & Avg Session
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Column 1: Pickups
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.habits_unlocks),
@@ -96,7 +95,6 @@ fun HabitsCard(
                     )
                 }
 
-                // Column 2: Avg Session Duration
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.habits_avg_session),
@@ -121,7 +119,6 @@ fun HabitsCard(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // First & Last Interaction
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = stringResource(R.string.habits_first_unlock) + " • " + stringResource(R.string.habits_last_lock),
@@ -143,7 +140,6 @@ fun HabitsCard(
                     )
                 }
 
-                // Bedtime Screen Time
                 if (insights.bedtimeUsageMillis > 0) {
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
@@ -157,6 +153,52 @@ fun HabitsCard(
                             fontWeight = FontWeight.SemiBold,
                             color = MaterialTheme.colorScheme.tertiary
                         )
+                    }
+                }
+            }
+
+            // Longest Continuous Session (Binge Tracker) & Peak Pickups Hour
+            if (insights.longestSession != null || (insights.peakUnlockHour != null && insights.peakUnlockCount > 0)) {
+                Spacer(modifier = Modifier.height(12.dp))
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f))
+                Spacer(modifier = Modifier.height(12.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    insights.longestSession?.let { session ->
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.habits_longest_session),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = onSurfaceVariant
+                            )
+                            Text(
+                                text = "${session.appLabel} • ${DateTimeUtils.formatDuration(session.durationMillis)}",
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+
+                    if (insights.peakUnlockHour != null && insights.peakUnlockCount > 0) {
+                        val startHour = String.format("%02d:00", insights.peakUnlockHour)
+                        val endHour = String.format("%02d:00", (insights.peakUnlockHour + 1) % 24)
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = stringResource(R.string.habits_peak_pickups),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = onSurfaceVariant
+                            )
+                            Text(
+                                text = stringResource(R.string.habits_peak_format, insights.peakUnlockCount, startHour, endHour),
+                                style = MaterialTheme.typography.titleSmall,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
                     }
                 }
             }

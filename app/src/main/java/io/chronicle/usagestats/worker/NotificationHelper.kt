@@ -33,9 +33,7 @@ object NotificationHelper {
 
     fun showDailySummaryNotification(
         context: Context,
-        totalDurationMillis: Long,
-        topAppLabel: String?,
-        activeAppCount: Int,
+        summary: io.chronicle.usagestats.domain.model.DailyUsageSummary,
         badgeEnabled: Boolean = true
     ) {
         if (!PermissionHelper.hasNotificationPermission(context)) {
@@ -55,10 +53,63 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
+        val totalDurationMillis = summary.totalScreenTimeMillis
+        val habitInsights = summary.habitInsights
+        val categories = habitInsights?.categoryBreakdown ?: emptyMap()
+
+        val gamingDuration = categories[io.chronicle.usagestats.domain.model.AppCategory.GAMES] ?: 0L
+        val socialDuration = categories[io.chronicle.usagestats.domain.model.AppCategory.SOCIAL] ?: 0L
+        val productivityScore = habitInsights?.productivityScore ?: 0
+        val bedtimeUsage = habitInsights?.bedtimeUsageMillis ?: 0L
+        val topApp = summary.topAppLabel ?: context.getString(R.string.category_other)
         val durationFormatted = DateTimeUtils.formatDuration(totalDurationMillis)
-        val title = context.getString(R.string.notification_daily_title, durationFormatted)
-        val topApp = topAppLabel ?: context.getString(R.string.category_other)
-        val body = context.getString(R.string.notification_daily_body, topApp, activeAppCount)
+
+        val (title, body) = when {
+            // Rule 1: Heavy Gaming (> 1h 30m in games)
+            gamingDuration >= 90 * 60 * 1000L -> {
+                val gameDurationStr = DateTimeUtils.formatDuration(gamingDuration)
+                Pair(
+                    context.getString(R.string.notification_gaming_title, gameDurationStr),
+                    context.getString(R.string.notification_gaming_body, gameDurationStr, topApp)
+                )
+            }
+            // Rule 2: Heavy Social Media Doomscrolling (> 1h 30m in social)
+            socialDuration >= 90 * 60 * 1000L -> {
+                val socialDurationStr = DateTimeUtils.formatDuration(socialDuration)
+                Pair(
+                    context.getString(R.string.notification_social_title, socialDurationStr),
+                    context.getString(R.string.notification_social_body, socialDurationStr)
+                )
+            }
+            // Rule 3: High Screen Time (> 4.5h) and Low Productivity (< 30%)
+            totalDurationMillis >= 270 * 60 * 1000L && productivityScore < 30 -> {
+                Pair(
+                    context.getString(R.string.notification_productivity_title, productivityScore),
+                    context.getString(R.string.notification_productivity_body, productivityScore, durationFormatted)
+                )
+            }
+            // Rule 4: High Productivity (> 65% productivity and at least 1h total)
+            productivityScore >= 65 && totalDurationMillis >= 60 * 60 * 1000L -> {
+                Pair(
+                    context.getString(R.string.notification_discipline_title, productivityScore),
+                    context.getString(R.string.notification_discipline_body, durationFormatted)
+                )
+            }
+            // Rule 5: Late Night Bedtime Screen Time (> 45m before sleep)
+            bedtimeUsage >= 45 * 60 * 1000L -> {
+                Pair(
+                    context.getString(R.string.notification_sleep_title),
+                    context.getString(R.string.notification_sleep_body)
+                )
+            }
+            // Rule 6: Standard Balanced Overview
+            else -> {
+                Pair(
+                    context.getString(R.string.notification_daily_title, durationFormatted),
+                    context.getString(R.string.notification_daily_body, topApp, summary.appCount)
+                )
+            }
+        }
 
         val hoursCount = (totalDurationMillis / (1000 * 60 * 60)).toInt()
 

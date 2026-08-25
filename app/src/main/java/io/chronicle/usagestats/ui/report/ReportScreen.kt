@@ -383,10 +383,46 @@ fun ReportScreen(
             } else {
                 LazyColumn(
                     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     // Summary Header
                     item { ReportSummaryHeader(data) }
+
+                    // Category Distribution Bar & Productivity Score
+                    val habits = data.habitInsights
+                    if (habits != null && habits.categoryBreakdown.isNotEmpty()) {
+                        item {
+                            io.chronicle.usagestats.ui.components.CategoryDistributionBar(
+                                categoryBreakdown = habits.categoryBreakdown,
+                                productivityScore = habits.productivityScore
+                            )
+                        }
+                    }
+
+                    // Habits & Routine Card
+                    if (habits != null) {
+                        item {
+                            io.chronicle.usagestats.ui.components.HabitsCard(insights = habits)
+                        }
+                    }
+
+                    // App vs App Comparison Card
+                    if (data.apps.size >= 2) {
+                        item {
+                            io.chronicle.usagestats.ui.components.AppComparisonCard(apps = data.apps)
+                        }
+                    }
+
+                    // App List Header
+                    item {
+                        Text(
+                            text = stringResource(R.string.timeline_most_used),
+                            style = MaterialTheme.typography.titleLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
 
                     // App Rows
                     items(data.apps) { app ->

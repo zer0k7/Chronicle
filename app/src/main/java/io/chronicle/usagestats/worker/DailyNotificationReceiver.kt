@@ -44,9 +44,7 @@ class DailyNotificationReceiver : BroadcastReceiver() {
                     val summary = usageRepo.getTodaySummary()
                     NotificationHelper.showDailySummaryNotification(
                         context = context,
-                        totalDurationMillis = summary.totalScreenTimeMillis,
-                        topAppLabel = summary.topAppLabel,
-                        activeAppCount = summary.appCount,
+                        summary = summary,
                         badgeEnabled = settings.badgeEnabled
                     )
 
