@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          fetch-tags: true
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -34,18 +35,20 @@ jobs:
       - name: Extract Tag Version and Custom Release Notes
         id: tag_info
         run: |
+          git fetch --tags --force
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
           TAG_NAME="${GITHUB_REF#refs/tags/}"
           echo "TAG_NAME=${TAG_VERSION}" >> $GITHUB_OUTPUT
           
           # Extract annotated tag message
           NOTES=$(git tag -l --format='%(contents)' "$TAG_NAME")
-          if [ -n "$NOTES" ]; then
-            echo "HAS_NOTES=true" >> $GITHUB_OUTPUT
-            printf "%s\n" "$NOTES" > /tmp/release_notes.md
-          else
-            echo "HAS_NOTES=false" >> $GITHUB_OUTPUT
+          if [ -z "$NOTES" ]; then
+            NOTES=$(git cat-file -p "$GITHUB_REF" 2>/dev/null | sed '1,/^$/d' || true)
           fi
+
+          echo "Extracted Release Notes:"
+          echo "$NOTES"
+          printf "%s\n" "$NOTES" > release_notes.md
 
       - name: Decode Release Keystore
         env:
@@ -76,7 +79,6 @@ jobs:
         with:
           files: release_artifacts/chronicle-v${{ steps.tag_info.outputs.TAG_NAME }}.apk
           name: "Chronicle v${{ steps.tag_info.outputs.TAG_NAME }}"
-          body_path: ${{ steps.tag_info.outputs.HAS_NOTES == 'true' && '/tmp/release_notes.md' || '' }}
+          body_path: release_notes.md
           draft: false
           prerelease: false
-          generate_release_notes: ${{ steps.tag_info.outputs.HAS_NOTES != 'true' }}
