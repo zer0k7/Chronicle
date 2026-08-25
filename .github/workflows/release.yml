@@ -67,3 +67,18 @@ jobs:
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: false
+
+      - name: Update Landing Page Version & Date
+        run: |
+          TAG_VERSION="${{ steps.tag_info.outputs.TAG_NAME }}"
+          CURRENT_DATE=$(date +'%Y-%m-%d')
+
+          # Update fallback data attributes in docs/index.html
+          sed -i "s|data-version=\"[^\"]*\"|data-version=\"v$TAG_VERSION\"|g" docs/index.html
+          sed -i "s|data-release-date=\"[^\"]*\"|data-release-date=\"$CURRENT_DATE\"|g" docs/index.html
+
+          git config user.name "zer0k7"
+          git config user.email "whoami@mailchat.me"
+          git add docs/index.html
+          git commit -m "chore(site): update landing page to v$TAG_VERSION" || echo "No site changes to commit"
+          git push origin main
