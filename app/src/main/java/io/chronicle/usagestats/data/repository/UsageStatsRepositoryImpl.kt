@@ -13,6 +13,7 @@ import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.HabitInsights
 import io.chronicle.usagestats.domain.model.HourlyUsageSlot
+import io.chronicle.usagestats.domain.model.LongestSession
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.domain.model.TrendComparison
@@ -560,18 +561,18 @@ class UsageStatsRepositoryImpl(
             }
         }
 
-        val longestSession = maxSessionPkg?.let {
+        val longestSession: LongestSession? = maxSessionPkg?.let { pkg: String ->
             LongestSession(
-                packageName = it,
-                appLabel = appIconHelper.getAppLabel(it),
+                packageName = pkg,
+                appLabel = appIconHelper.getAppLabel(pkg),
                 durationMillis = maxSessionDuration,
                 startEpochMillis = maxSessionStart,
                 endEpochMillis = maxSessionEnd
             )
         }
 
-        val peakHourIndex = hourlyUnlocks.indices.maxByOrNull { hourlyUnlocks[it] }
-        val peakCount = peakHourIndex?.let { hourlyUnlocks[it] } ?: 0
+        val peakHourIndex: Int? = (0 until 24).maxByOrNull { i: Int -> hourlyUnlocks[i] }
+        val peakCount = peakHourIndex?.let { i: Int -> hourlyUnlocks[i] } ?: 0
 
         val habitInsights = HabitInsights(
             deviceUnlocks = maxOf(deviceUnlocks, usageMap.values.sumOf { it.launchCount }),
