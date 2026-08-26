@@ -77,7 +77,9 @@ jobs:
 
           git config user.name "zer0k7"
           git config user.email "whoami@mailchat.me"
+          git checkout -- . || true
           git checkout main || git checkout -b main origin/main
+          git reset --hard origin/main
           git pull origin main --rebase
 
           # Update fallback data attributes in docs/index.html
