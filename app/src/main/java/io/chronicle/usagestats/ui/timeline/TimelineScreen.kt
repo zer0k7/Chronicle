@@ -3,7 +3,9 @@ package io.chronicle.usagestats.ui.timeline
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,7 +13,6 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,12 +24,12 @@ import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
 import androidx.compose.material.icons.outlined.CalendarMonth
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -46,7 +47,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,22 +59,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.compose.foundation.Canvas
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import io.chronicle.usagestats.R
 import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.domain.model.AppUsageInfo
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
+import io.chronicle.usagestats.ui.components.AppDetailBottomSheet
 import io.chronicle.usagestats.ui.components.AppIconView
 import io.chronicle.usagestats.ui.components.ChronicleCard
 import io.chronicle.usagestats.ui.components.ChronicleDatePickerDialog
-import io.chronicle.usagestats.ui.components.GoalProgressRing
 import io.chronicle.usagestats.ui.components.HourlyBarChart
 import io.chronicle.usagestats.ui.theme.ColorRemoved
+import io.chronicle.usagestats.ui.theme.ColorSuccess
 import kotlin.math.abs
 
 @Composable
@@ -82,6 +84,7 @@ fun TimelineScreen(
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val selectedHour by viewModel.selectedHour.collectAsStateWithLifecycle()
     val dailyGoalMinutes by viewModel.dailyGoalMinutes.collectAsStateWithLifecycle()
+    val selectedAppDetail by viewModel.selectedAppDetail.collectAsStateWithLifecycle()
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -160,22 +163,27 @@ fun TimelineScreen(
                     selected = selectedPeriod == period,
                     onClick = { viewModel.selectPeriod(period) },
                     label = {
-                        Text(label, style = MaterialTheme.typography.labelLarge)
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+                        )
                     },
                     colors = FilterChipDefaults.filterChipColors(
                         selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                        selectedLabelColor = MaterialTheme.colorScheme.primary
+                        selectedLabelColor = MaterialTheme.colorScheme.primary,
+                        selectedLeadingIconColor = MaterialTheme.colorScheme.primary
                     ),
                     shape = RoundedCornerShape(12.dp)
                 )
             }
         }
 
-        // Date Navigation Row
+        // Date Navigation Bar
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 4.dp),
+                .padding(horizontal = 12.dp, vertical = 4.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -186,47 +194,57 @@ fun TimelineScreen(
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowLeft,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = MaterialTheme.colorScheme.onBackground
                 )
             }
 
-            val dateLabel = timelineData?.let {
-                DateTimeUtils.formatPeriodLabel(selectedPeriod, it.startEpochMillis, it.endEpochMillis)
-            } ?: DateTimeUtils.formatDate(referenceDate)
+            val periodLabel = when (selectedPeriod) {
+                TimelinePeriod.DAY -> DateTimeUtils.formatDate(referenceDate)
+                TimelinePeriod.WEEK -> {
+                    val start = DateTimeUtils.getStartOfWeek(referenceDate)
+                    val end = DateTimeUtils.getEndOfWeek(referenceDate)
+                    "${DateTimeUtils.formatDate(start)} – ${DateTimeUtils.formatDate(end)}"
+                }
+                TimelinePeriod.MONTH -> DateTimeUtils.formatMonth(referenceDate)
+                TimelinePeriod.YEAR -> DateTimeUtils.formatYear(referenceDate)
+            }
 
             Text(
-                text = dateLabel,
+                text = periodLabel,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Medium,
+                fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onBackground
             )
 
+            val isFuture = DateTimeUtils.isTodayOrFuture(referenceDate, selectedPeriod)
             IconButton(
                 onClick = { viewModel.navigateNext() },
+                enabled = !isFuture,
                 modifier = Modifier.size(48.dp)
             ) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    tint = if (!isFuture) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onBackground.copy(alpha = 0.3f)
                 )
             }
         }
 
-        // Loading indicator
-        AnimatedVisibility(visible = isRefreshing, enter = fadeIn(), exit = fadeOut()) {
+        // Sync / Refresh progress
+        AnimatedVisibility(
+            visible = isRefreshing,
+            enter = fadeIn(),
+            exit = fadeOut()
+        ) {
             LinearProgressIndicator(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 20.dp),
+                    .height(3.dp),
                 color = MaterialTheme.colorScheme.primary,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant
             )
         }
 
-        Spacer(modifier = Modifier.height(4.dp))
-
-        // Content
         val data = timelineData
         if (data == null) {
             Box(
@@ -260,7 +278,7 @@ fun TimelineScreen(
                 contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                // 1. Total Screen Time & Trend Comparison Card
+                // 1. Total Screen Time & Trend Comparison Card with Goal Progress
                 item {
                     TimelineSummaryCard(
                         data = data,
@@ -279,7 +297,7 @@ fun TimelineScreen(
                     }
                 }
 
-                // 5. Weekly Bar Chart (Week view only)
+                // 3. Weekly Bar Chart (Week view only)
                 if (selectedPeriod == TimelinePeriod.WEEK && data.dailySummaries.isNotEmpty()) {
                     item {
                         ChronicleCard(modifier = Modifier.fillMaxWidth()) {
@@ -300,7 +318,7 @@ fun TimelineScreen(
                     }
                 }
 
-                // 6. Most Used Apps Header
+                // 4. Most Used Apps Header
                 item {
                     val headerTitle = if (selectedPeriod == TimelinePeriod.DAY && selectedHour != null) {
                         val startHourStr = String.format("%02d:00", selectedHour)
@@ -319,12 +337,13 @@ fun TimelineScreen(
                     )
                 }
 
-                // 7. App Rows
+                // 5. App Rows with clickable drill-down
                 val maxDuration = displayedApps.firstOrNull()?.totalTimeForegroundMillis ?: 1L
                 items(displayedApps) { app ->
                     AppUsageRow(
                         app = app,
-                        maxDuration = maxDuration
+                        maxDuration = maxDuration,
+                        onClick = { viewModel.selectApp(app.packageName) }
                     )
                 }
 
@@ -332,6 +351,15 @@ fun TimelineScreen(
                 item { Spacer(modifier = Modifier.height(88.dp)) }
             }
         }
+    }
+
+    // App Detail Bottom Sheet
+    selectedAppDetail?.let { detail ->
+        AppDetailBottomSheet(
+            appDetail = detail,
+            onDismissRequest = { viewModel.selectApp(null) },
+            onSaveOverride = { override -> viewModel.saveAppOverride(override) }
+        )
     }
 }
 
@@ -392,7 +420,7 @@ private fun TimelineSummaryCard(data: TimelineData, dailyGoalMinutes: Int) {
             } else 0f
             
             val progressColor = when {
-                progress < 0.60f -> io.chronicle.usagestats.ui.theme.ColorSuccess
+                progress < 0.60f -> ColorSuccess
                 progress < 0.90f -> MaterialTheme.colorScheme.tertiary
                 else -> MaterialTheme.colorScheme.error
             }
@@ -458,9 +486,15 @@ private fun TimelineSummaryCard(data: TimelineData, dailyGoalMinutes: Int) {
 }
 
 @Composable
-private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
+private fun AppUsageRow(
+    app: AppUsageInfo,
+    maxDuration: Long,
+    onClick: () -> Unit
+) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
@@ -479,14 +513,25 @@ private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = app.appLabel,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = app.appLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (app.isDistraction) {
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                imageVector = Icons.Outlined.WarningAmber,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.error,
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+                    }
 
                     val subtext = buildString {
                         if (app.launchCount > 0) {
@@ -495,6 +540,10 @@ private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
                         if (app.avgSessionDurationMillis > 0) {
                             if (isNotEmpty()) append(" • ")
                             append("avg ${DateTimeUtils.formatDuration(app.avgSessionDurationMillis)}")
+                        }
+                        if (app.dailyLimitMinutes != null) {
+                            if (isNotEmpty()) append(" • ")
+                            append("limit ${app.dailyLimitMinutes}m")
                         }
                         if (app.isRemoved) {
                             if (isNotEmpty()) append(" • ")
@@ -521,19 +570,25 @@ private fun AppUsageRow(app: AppUsageInfo, maxDuration: Long) {
                 )
             }
 
-            Spacer(modifier = Modifier.height(10.dp))
+            Spacer(Modifier.height(10.dp))
 
             val ratio = if (maxDuration > 0) {
-                (app.totalTimeForegroundMillis.toFloat() / maxDuration.toFloat()).coerceIn(0.02f, 1f)
-            } else 0.02f
+                (app.totalTimeForegroundMillis.toFloat() / maxDuration).coerceIn(0.01f, 1f)
+            } else 0.01f
+
+            val barColor = when {
+                app.isRemoved -> ColorRemoved
+                app.isDistraction -> MaterialTheme.colorScheme.error
+                else -> MaterialTheme.colorScheme.primary
+            }
 
             LinearProgressIndicator(
                 progress = { ratio },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(6.dp)
+                    .height(5.dp)
                     .clip(RoundedCornerShape(3.dp)),
-                color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.primary,
+                color = barColor,
                 trackColor = MaterialTheme.colorScheme.surfaceVariant,
                 strokeCap = StrokeCap.Round
             )
@@ -547,22 +602,28 @@ private fun WeeklyBarChart(
     referenceDate: Long,
     modifier: Modifier = Modifier
 ) {
-    val maxDuration = dailySummaries.maxOfOrNull { it.totalScreenTimeMillis } ?: 1L
-    val twoHoursMs = 2 * 60 * 60 * 1000L
-    val yAxisMax = ((maxDuration / twoHoursMs) + 1) * twoHoursMs
-    val yAxisSteps = (yAxisMax / twoHoursMs).toInt().coerceIn(1, 6)
-
-    val currentDayOfWeek = DateTimeUtils.toZonedDateTime(referenceDate).dayOfWeek
-    val dayLabels = listOf("Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun")
-    val daysOfWeek = java.time.DayOfWeek.entries
-
-    val summaryByDay = dailySummaries.associateBy {
+    val summariesMap = dailySummaries.associateBy {
         DateTimeUtils.toZonedDateTime(it.dateEpochMillis).dayOfWeek
     }
 
+    val maxDaily = dailySummaries.maxOfOrNull { it.totalScreenTimeMillis } ?: 1L
     val primaryColor = MaterialTheme.colorScheme.primary
-    val mutedColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
-    val gridColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f)
+    val trackColor = MaterialTheme.colorScheme.surfaceVariant
+    val outlineColor = MaterialTheme.colorScheme.outlineVariant
+    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+
+    val todayZdt = DateTimeUtils.nowInIst()
+    val isCurrentWeek = DateTimeUtils.isSameWeek(referenceDate, System.currentTimeMillis())
+
+    val daysOfWeek = listOf(
+        java.time.DayOfWeek.MONDAY,
+        java.time.DayOfWeek.TUESDAY,
+        java.time.DayOfWeek.WEDNESDAY,
+        java.time.DayOfWeek.THURSDAY,
+        java.time.DayOfWeek.FRIDAY,
+        java.time.DayOfWeek.SATURDAY,
+        java.time.DayOfWeek.SUNDAY
+    )
 
     val textPaint = remember {
         android.graphics.Paint().apply {
@@ -573,68 +634,57 @@ private fun WeeklyBarChart(
         }
     }
 
-    val yAxisPaint = remember {
-        android.graphics.Paint().apply {
-            color = android.graphics.Color.GRAY
-            textSize = 24f
-            textAlign = android.graphics.Paint.Align.RIGHT
-            isAntiAlias = true
-        }
-    }
-
     Canvas(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .padding(start = 40.dp, end = 16.dp, top = 8.dp, bottom = 4.dp)
+            .height(160.dp)
+            .padding(top = 12.dp, bottom = 4.dp)
     ) {
-        val chartWidth = size.width
         val chartHeight = size.height - 40f
-        val barWidth = chartWidth / 7f * 0.6f
-        val barSpacing = chartWidth / 7f
+        val slotWidth = size.width / 7f
+        val barWidth = slotWidth * 0.45f
 
-        for (i in 0..yAxisSteps) {
-            val y = chartHeight - (chartHeight * i / yAxisSteps)
-            drawLine(
-                color = gridColor,
-                start = Offset(0f, y),
-                end = Offset(chartWidth, y),
-                strokeWidth = 1f
-            )
-            val hours = (yAxisMax * i / yAxisSteps) / (60 * 60 * 1000L)
-            drawContext.canvas.nativeCanvas.drawText(
-                "${hours}h",
-                -8f,
-                y + 8f,
-                yAxisPaint
-            )
-        }
+        // Draw horizontal grid line at 50%
+        drawLine(
+            color = outlineColor.copy(alpha = 0.5f),
+            start = Offset(0f, chartHeight / 2f),
+            end = Offset(size.width, chartHeight / 2f),
+            strokeWidth = 1f
+        )
 
-        for (i in daysOfWeek.indices) {
-            val dayOfWeek = daysOfWeek[i]
-            val summary = summaryByDay[dayOfWeek]
+        daysOfWeek.forEachIndexed { index, dow ->
+            val summary = summariesMap[dow]
             val duration = summary?.totalScreenTimeMillis ?: 0L
-            val barHeight = if (yAxisMax > 0) {
-                (duration.toFloat() / yAxisMax) * chartHeight
-            } else 0f
+            val heightRatio = if (maxDaily > 0) (duration.toFloat() / maxDaily.toFloat()).coerceIn(0f, 1f) else 0f
+            val x = index * slotWidth + (slotWidth - barWidth) / 2f
+            val barHeight = maxOf(4f, heightRatio * chartHeight)
+            val isToday = isCurrentWeek && dow == todayZdt.dayOfWeek
 
-            val x = i * barSpacing + (barSpacing - barWidth) / 2f
-            val isCurrentDay = dayOfWeek == currentDayOfWeek
-            val barColor = if (isCurrentDay) primaryColor else mutedColor
+            // Bar background slot
+            drawRoundRect(
+                color = trackColor,
+                topLeft = Offset(x, 0f),
+                size = Size(barWidth, chartHeight),
+                cornerRadius = CornerRadius(4f, 4f)
+            )
 
-            if (barHeight > 0f) {
+            // Active bar
+            if (duration > 0) {
                 drawRoundRect(
-                    color = barColor,
+                    color = if (isToday) primaryColor else primaryColor.copy(alpha = 0.7f),
                     topLeft = Offset(x, chartHeight - barHeight),
                     size = Size(barWidth, barHeight),
-                    cornerRadius = CornerRadius(6f, 6f)
+                    cornerRadius = CornerRadius(4f, 4f)
                 )
             }
 
+            // Day label
+            val label = dow.name.take(3)
+            textPaint.color = if (isToday) primaryColor.hashCode() else onSurfaceVariant.hashCode()
             drawContext.canvas.nativeCanvas.drawText(
-                dayLabels[i],
+                label,
                 x + barWidth / 2f,
-                chartHeight + 30f,
+                size.height - 6f,
                 textPaint
             )
         }

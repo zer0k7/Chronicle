@@ -162,4 +162,34 @@ class UsageInsightsTest {
         assertEquals(14, phantom.count)
         assertEquals(28, phantom.totalQuickChecks)
     }
+
+    @Test
+    fun testDisciplineStreaks_Structure() {
+        val streaks = io.chronicle.usagestats.domain.model.DisciplineStreaks(
+            goalStreakDays = 5,
+            morningShieldStreakDays = 4,
+            sleepSanctuaryStreakDays = 3,
+            bestGoalStreakDays = 12
+        )
+
+        assertEquals(5, streaks.goalStreakDays)
+        assertEquals(4, streaks.morningShieldStreakDays)
+        assertEquals(3, streaks.sleepSanctuaryStreakDays)
+        assertEquals(12, streaks.bestGoalStreakDays)
+    }
+
+    @Test
+    fun testCustomAppOverride_Defaults() {
+        val override = io.chronicle.usagestats.domain.model.CustomAppOverride(
+            packageName = "com.google.android.youtube",
+            customCategory = AppCategory.PRODUCTIVITY,
+            isDistraction = true,
+            dailyLimitMinutes = 45
+        )
+
+        assertEquals("com.google.android.youtube", override.packageName)
+        assertEquals(AppCategory.PRODUCTIVITY, override.customCategory)
+        assertTrue(override.isDistraction)
+        assertEquals(45, override.dailyLimitMinutes)
+    }
 }

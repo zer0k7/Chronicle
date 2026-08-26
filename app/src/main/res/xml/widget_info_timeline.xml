@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:minWidth="260dp"
+    android:minHeight="110dp"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="1800000"
+    android:description="@string/widget_timeline_desc"
+    android:previewImage="@drawable/ic_chronicle_logo"
+    android:initialLayout="@layout/widget_chronicle_timeline"
+    android:resizeMode="horizontal|vertical"
+    android:widgetCategory="home_screen" />

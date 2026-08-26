@@ -329,5 +329,33 @@
     <string name="settings_compact_view_desc">Reduce card spacing and font sizes for higher information density.</string>
     <string name="settings_high_contrast">High Contrast</string>
     <string name="settings_high_contrast_desc">Enhance text contrast for improved readability in light themes.</string>
+
+    <!-- App Detail Dossier -->
+    <string name="app_detail_title">Application Dossier</string>
+    <string name="app_detail_today_usage">Today\'s Activity</string>
+    <string name="app_detail_hourly_distribution">24-Hour Activity Profile</string>
+    <string name="app_detail_weekly_trajectory">7-Day Trajectory</string>
+    <string name="app_detail_ghost_opens_title">Micro-Check Loop Detector</string>
+    <string name="app_detail_ghost_opens_desc">%1$d unconscious opens under 30 seconds</string>
+    <string name="app_detail_daily_limit_title">Daily Usage Budget</string>
+    <string name="app_detail_daily_limit_desc">Set maximum active time per day</string>
+    <string name="app_detail_no_limit">No limit set</string>
+    <string name="app_detail_category_title">Reassign Category</string>
+    <string name="app_detail_distraction_title">Flag as Distraction</string>
+    <string name="app_detail_distraction_desc">Prioritize for reality-check alerts and focus enforcement</string>
+    <string name="app_detail_save_changes">Apply Changes</string>
+
+    <!-- Discipline Streaks -->
+    <string name="streaks_title">Mindful Discipline Streaks</string>
+    <string name="streaks_goal_compliance">Goal Compliance</string>
+    <string name="streaks_morning_shield">Morning Shield</string>
+    <string name="streaks_sleep_sanctuary">Sleep Sanctuary</string>
+    <string name="streaks_best_record">Best: %1$d days</string>
+    <string name="streaks_days_count">%1$d days</string>
+    <string name="streaks_day_count_single">1 day</string>
+
+    <!-- Widgets -->
+    <string name="widget_goal_desc">Compact daily screen time gauge and goal status indicator.</string>
+    <string name="widget_timeline_desc">Overview of daily screen time, active app count, and most used application.</string>
 </resources>
 

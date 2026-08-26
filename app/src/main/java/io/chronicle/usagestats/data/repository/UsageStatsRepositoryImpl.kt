@@ -5,12 +5,17 @@ import android.app.usage.UsageStatsManager
 import android.content.Context
 import io.chronicle.usagestats.core.util.AppIconHelper
 import io.chronicle.usagestats.core.util.DateTimeUtils
+import io.chronicle.usagestats.data.local.dao.AppOverrideDao
 import io.chronicle.usagestats.data.local.dao.UsageDao
+import io.chronicle.usagestats.data.local.entity.AppOverrideEntity
 import io.chronicle.usagestats.data.local.entity.AppUsageEntity
 import io.chronicle.usagestats.data.local.entity.DailySummaryEntity
 import io.chronicle.usagestats.domain.model.AppCategory
+import io.chronicle.usagestats.domain.model.AppDetailInfo
 import io.chronicle.usagestats.domain.model.AppUsageInfo
+import io.chronicle.usagestats.domain.model.CustomAppOverride
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
+import io.chronicle.usagestats.domain.model.DisciplineStreaks
 import io.chronicle.usagestats.domain.model.DopamineDebt
 import io.chronicle.usagestats.domain.model.GhostOpensInsight
 import io.chronicle.usagestats.domain.model.HabitInsights
@@ -27,13 +32,18 @@ import io.chronicle.usagestats.domain.model.WakingLifeImpact
 import io.chronicle.usagestats.domain.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+import java.io.File
+import java.io.FileWriter
 
 class UsageStatsRepositoryImpl(
     private val context: Context,
     private val usageDao: UsageDao,
+    private val appOverrideDao: AppOverrideDao,
     private val appIconHelper: AppIconHelper
 ) : UsageRepository {
 
@@ -54,6 +64,7 @@ class UsageStatsRepositoryImpl(
         val usageMap = result.appUsageMap
 
         val existingRecords = usageDao.getUsageForDateDirect(startOfDay).associateBy { it.packageName }
+        val overrides = appOverrideDao.getAllOverridesDirect().associateBy { it.packageName }
         val entities = mutableListOf<AppUsageEntity>()
 
         for ((pkgName, metrics) in usageMap) {
@@ -61,10 +72,11 @@ class UsageStatsRepositoryImpl(
 
             val isInstalled = appIconHelper.isAppInstalled(pkgName)
             val label = appIconHelper.getAppLabel(pkgName, existingRecords[pkgName]?.appLabel)
-            val category = if (!isInstalled) {
-                AppCategory.REMOVED.name
-            } else {
-                appIconHelper.getAppCategory(pkgName).name
+            val override = overrides[pkgName]
+            val category = when {
+                !isInstalled -> AppCategory.REMOVED.name
+                override?.customCategory != null -> override.customCategory
+                else -> appIconHelper.getAppCategory(pkgName).name
             }
 
             entities.add(
@@ -129,19 +141,26 @@ class UsageStatsRepositoryImpl(
         val now = System.currentTimeMillis()
         val queryEnd = if (endOfDay > now) now else endOfDay
 
-        return usageDao.getUsageForDate(startOfDay).map { entities ->
+        return combine(
+            usageDao.getUsageForDate(startOfDay),
+            appOverrideDao.getAllOverrides()
+        ) { entities, overridesList ->
+            val overridesMap = overridesList.associateBy { it.packageName }
             val totalTime = entities.sumOf { it.foregroundTimeMillis }
             val top = entities.maxByOrNull { it.foregroundTimeMillis }
-            val domainApps = entities.map { it.toDomain(appIconHelper) }
+            val domainApps = entities.map { it.toDomain(appIconHelper, overridesMap[it.packageName]) }
 
-            // Compute realtime advanced insights
             val analyticsResult = aggregateDayData(startOfDay, queryEnd)
 
-            // Compute trend comparison vs previous day
             val previousDayStart = DateTimeUtils.toZonedDateTime(startOfDay).minusDays(1).toInstant().toEpochMilli()
             val previousDaySummary = usageDao.getSummaryForDate(previousDayStart)
             val previousDuration = previousDaySummary?.totalScreenTimeMillis ?: 0L
             val trend = calculateTrend(totalTime, previousDuration)
+
+            // Compute discipline streaks
+            val summariesList = usageDao.getAllSummariesDirect()
+            val streaks = calculateStreaksFromSummaries(summariesList, 150)
+            val habitWithStreaks = analyticsResult.habitInsights.copy(disciplineStreaks = streaks)
 
             DailyUsageSummary(
                 dateEpochMillis = startOfDay,
@@ -151,7 +170,7 @@ class UsageStatsRepositoryImpl(
                 appCount = domainApps.size,
                 apps = domainApps,
                 hourlySlots = analyticsResult.hourlySlots,
-                habitInsights = analyticsResult.habitInsights,
+                habitInsights = habitWithStreaks,
                 trendComparison = trend
             )
         }.flowOn(Dispatchers.IO)
@@ -163,17 +182,26 @@ class UsageStatsRepositoryImpl(
     ): Flow<List<AppUsageInfo>> {
         val start = DateTimeUtils.getStartOfDay(startDateEpochMillis)
         val end = DateTimeUtils.getEndOfDay(endDateEpochMillis)
-        return usageDao.getUsageForRange(start, end).map { entities ->
+        return combine(
+            usageDao.getUsageForRange(start, end),
+            appOverrideDao.getAllOverrides()
+        ) { entities, overridesList ->
+            val overridesMap = overridesList.associateBy { it.packageName }
             entities.groupBy { it.packageName }.map { (pkg, list) ->
                 val totalTime = list.sumOf { it.foregroundTimeMillis }
                 val totalLaunches = list.sumOf { it.launchCount }
                 val lastUsed = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L
                 val isRemoved = list.any { it.isRemoved } || !appIconHelper.isAppInstalled(pkg)
                 val label = list.firstOrNull()?.appLabel ?: appIconHelper.getAppLabel(pkg)
-                val category = if (isRemoved) {
-                    AppCategory.REMOVED
-                } else {
-                    appIconHelper.getAppCategory(pkg)
+                val override = overridesMap[pkg]
+                val category = when {
+                    isRemoved -> AppCategory.REMOVED
+                    override?.customCategory != null -> try {
+                        AppCategory.valueOf(override.customCategory)
+                    } catch (_: Exception) {
+                        appIconHelper.getAppCategory(pkg)
+                    }
+                    else -> appIconHelper.getAppCategory(pkg)
                 }
 
                 AppUsageInfo(
@@ -184,7 +212,9 @@ class UsageStatsRepositoryImpl(
                     lastTimeUsedMillis = lastUsed,
                     avgSessionDurationMillis = if (totalLaunches > 0) totalTime / totalLaunches else 0L,
                     isRemoved = isRemoved,
-                    category = category
+                    category = category,
+                    dailyLimitMinutes = override?.dailyLimitMinutes,
+                    isDistraction = override?.isDistraction ?: false
                 )
             }.sortedByDescending { it.totalTimeForegroundMillis }
         }.flowOn(Dispatchers.IO)
@@ -213,7 +243,11 @@ class UsageStatsRepositoryImpl(
             )
         }
 
-        return usageDao.getUsageForRange(start, end).map { entities ->
+        return combine(
+            usageDao.getUsageForRange(start, end),
+            appOverrideDao.getAllOverrides()
+        ) { entities, overridesList ->
+            val overridesMap = overridesList.associateBy { it.packageName }
             val totalDuration = entities.sumOf { it.foregroundTimeMillis }
 
             val dailySummaries = entities.groupBy { it.dateStartEpochMillis }
@@ -226,7 +260,7 @@ class UsageStatsRepositoryImpl(
                         topAppPackage = dayTop?.packageName,
                         topAppLabel = dayTop?.appLabel,
                         appCount = dayEntities.size,
-                        apps = dayEntities.map { it.toDomain(appIconHelper) }
+                        apps = dayEntities.map { it.toDomain(appIconHelper, overridesMap[it.packageName]) }
                     )
                 }.sortedBy { it.dateEpochMillis }
 
@@ -235,7 +269,16 @@ class UsageStatsRepositoryImpl(
                 val launches = list.sumOf { it.launchCount }
                 val isRemoved = list.any { it.isRemoved } || !appIconHelper.isAppInstalled(pkg)
                 val label = list.firstOrNull()?.appLabel ?: appIconHelper.getAppLabel(pkg)
-                val category = if (isRemoved) AppCategory.REMOVED else appIconHelper.getAppCategory(pkg)
+                val override = overridesMap[pkg]
+                val category = when {
+                    isRemoved -> AppCategory.REMOVED
+                    override?.customCategory != null -> try {
+                        AppCategory.valueOf(override.customCategory)
+                    } catch (_: Exception) {
+                        appIconHelper.getAppCategory(pkg)
+                    }
+                    else -> appIconHelper.getAppCategory(pkg)
+                }
 
                 AppUsageInfo(
                     packageName = pkg,
@@ -245,17 +288,17 @@ class UsageStatsRepositoryImpl(
                     lastTimeUsedMillis = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L,
                     avgSessionDurationMillis = if (launches > 0) time / launches else 0L,
                     isRemoved = isRemoved,
-                    category = category
+                    category = category,
+                    dailyLimitMinutes = override?.dailyLimitMinutes,
+                    isDistraction = override?.isDistraction ?: false
                 )
             }.sortedByDescending { it.totalTimeForegroundMillis }
 
-            // Calculate trend vs previous period
             val (prevStart, prevEnd) = getPreviousPeriodRange(period, referenceEpochMillis)
             val prevEntities = usageDao.getUsageForRangeDirect(prevStart, prevEnd)
             val prevDuration = prevEntities.sumOf { it.foregroundTimeMillis }
             val trend = calculateTrend(totalDuration, prevDuration)
 
-            // Calculate day-specific insights for DAY period
             val dayAnalytics = if (period == TimelinePeriod.DAY) {
                 val now = System.currentTimeMillis()
                 val queryEnd = if (end > now) now else end
@@ -318,9 +361,10 @@ class UsageStatsRepositoryImpl(
 
         syncUsageForDate(todayStart)
         val records = usageDao.getUsageForDateDirect(todayStart)
+        val overrides = appOverrideDao.getAllOverridesDirect().associateBy { it.packageName }
         val totalTime = records.sumOf { it.foregroundTimeMillis }
         val top = records.maxByOrNull { it.foregroundTimeMillis }
-        val domainApps = records.map { it.toDomain(appIconHelper) }
+        val domainApps = records.map { it.toDomain(appIconHelper, overrides[it.packageName]) }
 
         val analytics = aggregateDayData(todayStart, queryEnd)
 
@@ -343,7 +387,11 @@ class UsageStatsRepositoryImpl(
         val start = DateTimeUtils.getStartOfDay(startDateEpochMillis)
         val end = DateTimeUtils.getEndOfDay(endDateEpochMillis)
 
-        return usageDao.getUsageForRange(start, end).map { entities ->
+        return combine(
+            usageDao.getUsageForRange(start, end),
+            appOverrideDao.getAllOverrides()
+        ) { entities, overridesList ->
+            val overridesMap = overridesList.associateBy { it.packageName }
             val totalTime = entities.sumOf { it.foregroundTimeMillis }
             val dailySummariesEntities = usageDao.getSummariesInRangeDirect(start, end)
             val daysCount = maxOf(1, dailySummariesEntities.size)
@@ -353,6 +401,17 @@ class UsageStatsRepositoryImpl(
                 val appTotal = list.sumOf { it.foregroundTimeMillis }
                 val launches = list.sumOf { it.launchCount }
                 val isRemoved = list.any { it.isRemoved } || !appIconHelper.isAppInstalled(pkg)
+                val override = overridesMap[pkg]
+                val category = when {
+                    isRemoved -> AppCategory.REMOVED
+                    override?.customCategory != null -> try {
+                        AppCategory.valueOf(override.customCategory)
+                    } catch (_: Exception) {
+                        appIconHelper.getAppCategory(pkg)
+                    }
+                    else -> appIconHelper.getAppCategory(pkg)
+                }
+
                 AppUsageInfo(
                     packageName = pkg,
                     appLabel = list.firstOrNull()?.appLabel ?: appIconHelper.getAppLabel(pkg),
@@ -361,7 +420,9 @@ class UsageStatsRepositoryImpl(
                     lastTimeUsedMillis = list.maxOfOrNull { it.lastTimeUsedMillis } ?: 0L,
                     avgSessionDurationMillis = if (launches > 0) appTotal / launches else 0L,
                     isRemoved = isRemoved,
-                    category = if (isRemoved) AppCategory.REMOVED else appIconHelper.getAppCategory(pkg)
+                    category = category,
+                    dailyLimitMinutes = override?.dailyLimitMinutes,
+                    isDistraction = override?.isDistraction ?: false
                 )
             }.sortedByDescending { it.totalTimeForegroundMillis }
 
@@ -380,7 +441,6 @@ class UsageStatsRepositoryImpl(
                 )
             }
 
-            // Real calculations for Life Clock & Dopamine Debt over the range
             val yearsLost = (dailyAverage.toDouble() / (24.0 * 3600.0 * 1000.0)) * 50.0
             val consciousPct = ((dailyAverage.toDouble() / (16.0 * 3600.0 * 1000.0)) * 100.0).coerceIn(0.0, 100.0)
             val lifeClock = LifeClockProjection(dailyAverage, yearsLost, consciousPct)
@@ -414,12 +474,286 @@ class UsageStatsRepositoryImpl(
         usageDao.getTotalDaysTracked()
     }
 
+    override fun getAppDetail(
+        packageName: String,
+        dateStartEpochMillis: Long
+    ): Flow<AppDetailInfo> = flow {
+        val startOfDay = DateTimeUtils.getStartOfDay(dateStartEpochMillis)
+        val endOfDay = DateTimeUtils.getEndOfDay(dateStartEpochMillis)
+        val now = System.currentTimeMillis()
+        val queryEnd = if (endOfDay > now) now else endOfDay
+
+        val isInstalled = appIconHelper.isAppInstalled(packageName)
+        val label = appIconHelper.getAppLabel(packageName)
+        val override = appOverrideDao.getOverrideDirect(packageName)
+
+        val resolvedCategory = when {
+            !isInstalled -> AppCategory.REMOVED
+            override?.customCategory != null -> try {
+                AppCategory.valueOf(override.customCategory)
+            } catch (_: Exception) {
+                appIconHelper.getAppCategory(packageName)
+            }
+            else -> appIconHelper.getAppCategory(packageName)
+        }
+
+        // Aggregate 24 hourly slots specifically for this app
+        val singleAppHourlySlots = aggregateSingleAppHourlySlots(packageName, startOfDay, queryEnd)
+        val todayRecord = usageDao.getUsageForDateDirect(startOfDay).find { it.packageName == packageName }
+        val totalDailyScreenTime = usageDao.getSummaryForDate(startOfDay)?.totalScreenTimeMillis ?: 1L
+
+        val todayTime = todayRecord?.foregroundTimeMillis ?: 0L
+        val todayLaunches = todayRecord?.launchCount ?: 0
+        val todayAvgSession = if (todayLaunches > 0) todayTime / todayLaunches else 0L
+        val pctTotal = if (totalDailyScreenTime > 0) {
+            (todayTime.toFloat() / totalDailyScreenTime.toFloat()).coerceIn(0f, 1f)
+        } else 0f
+
+        // Query past 7 days history for this specific app
+        val sevenDaysAgo = DateTimeUtils.toZonedDateTime(startOfDay).minusDays(6).toInstant().toEpochMilli()
+        val rangeRecords = usageDao.getUsageForRangeDirect(sevenDaysAgo, endOfDay)
+            .filter { it.packageName == packageName }
+            .associateBy { it.dateStartEpochMillis }
+
+        val recentDaysUsage = mutableListOf<Pair<Long, Long>>()
+        for (i in 6 downTo 0) {
+            val d = DateTimeUtils.toZonedDateTime(startOfDay).minusDays(i.toLong()).toInstant().toEpochMilli()
+            val dayStart = DateTimeUtils.getStartOfDay(d)
+            val time = rangeRecords[dayStart]?.foregroundTimeMillis ?: 0L
+            recentDaysUsage.add(Pair(dayStart, time))
+        }
+
+        // Count ghost reflex opens (<30s) for this app today
+        val ghostOpens = countGhostOpensForApp(packageName, startOfDay, queryEnd)
+
+        emit(
+            AppDetailInfo(
+                packageName = packageName,
+                appLabel = label,
+                category = resolvedCategory,
+                isRemoved = !isInstalled,
+                isDistraction = override?.isDistraction ?: false,
+                dailyLimitMinutes = override?.dailyLimitMinutes,
+                todayForegroundMillis = todayTime,
+                todayLaunchCount = todayLaunches,
+                todayAvgSessionMillis = todayAvgSession,
+                percentageOfTotalDaily = pctTotal,
+                hourlySlots = singleAppHourlySlots,
+                recentDaysUsage = recentDaysUsage,
+                ghostOpensCount = ghostOpens
+            )
+        )
+    }.flowOn(Dispatchers.IO)
+
+    override fun getDisciplineStreaks(goalMinutes: Int): Flow<DisciplineStreaks> = flow {
+        val allSummaries = usageDao.getAllSummariesDirect()
+        emit(calculateStreaksFromSummaries(allSummaries, goalMinutes))
+    }.flowOn(Dispatchers.IO)
+
+    override suspend fun saveAppOverride(override: CustomAppOverride) = withContext(Dispatchers.IO) {
+        appOverrideDao.upsertOverride(
+            AppOverrideEntity(
+                packageName = override.packageName,
+                customCategory = override.customCategory?.name,
+                isDistraction = override.isDistraction,
+                dailyLimitMinutes = override.dailyLimitMinutes,
+                updatedAtEpochMillis = System.currentTimeMillis()
+            )
+        )
+    }
+
+    override fun getAppOverride(packageName: String): Flow<CustomAppOverride?> {
+        return appOverrideDao.getOverride(packageName).map { entity ->
+            entity?.let {
+                CustomAppOverride(
+                    packageName = it.packageName,
+                    customCategory = it.customCategory?.let { catStr ->
+                        try { AppCategory.valueOf(catStr) } catch (_: Exception) { null }
+                    },
+                    isDistraction = it.isDistraction,
+                    dailyLimitMinutes = it.dailyLimitMinutes
+                )
+            }
+        }.flowOn(Dispatchers.IO)
+    }
+
+    override fun getAllAppOverrides(): Flow<List<CustomAppOverride>> {
+        return appOverrideDao.getAllOverrides().map { list ->
+            list.map { entity ->
+                CustomAppOverride(
+                    packageName = entity.packageName,
+                    customCategory = entity.customCategory?.let { catStr ->
+                        try { AppCategory.valueOf(catStr) } catch (_: Exception) { null }
+                    },
+                    isDistraction = entity.isDistraction,
+                    dailyLimitMinutes = entity.dailyLimitMinutes
+                )
+            }
+        }.flowOn(Dispatchers.IO)
+    }
+
+    override suspend fun exportUsageToCsv(
+        startDateEpochMillis: Long,
+        endDateEpochMillis: Long
+    ): File = withContext(Dispatchers.IO) {
+        val start = DateTimeUtils.getStartOfDay(startDateEpochMillis)
+        val end = DateTimeUtils.getEndOfDay(endDateEpochMillis)
+
+        val records = usageDao.getUsageForRangeDirect(start, end)
+        val exportDir = File(context.cacheDir, "reports").apply { mkdirs() }
+        val exportFile = File(exportDir, "chronicle_usage_export_${System.currentTimeMillis()}.csv")
+
+        FileWriter(exportFile).use { writer ->
+            writer.append("Date,Package Name,App Name,Category,Foreground Time (Minutes),Launch Count,Last Used (IST)\n")
+            for (record in records) {
+                val dateStr = DateTimeUtils.formatDate(record.dateStartEpochMillis)
+                val durationMinutes = record.foregroundTimeMillis / 60000.0
+                val lastUsedStr = if (record.lastTimeUsedMillis > 0) {
+                    DateTimeUtils.formatDateTime(record.lastTimeUsedMillis)
+                } else "N/A"
+
+                val escapedLabel = "\"" + record.appLabel.replace("\"", "\"\"") + "\""
+                val escapedPkg = "\"" + record.packageName.replace("\"", "\"\"") + "\""
+
+                writer.append("$dateStr,$escapedPkg,$escapedLabel,${record.category},${String.format(java.util.Locale.ENGLISH, "%.2f", durationMinutes)},${record.launchCount},$lastUsedStr\n")
+            }
+        }
+
+        exportFile
+    }
+
+    private fun calculateStreaksFromSummaries(
+        summaries: List<DailyUsageSummaryEntity>,
+        goalMinutes: Int
+    ): DisciplineStreaks {
+        if (summaries.isEmpty()) return DisciplineStreaks()
+
+        val sorted = summaries.sortedByDescending { it.dateStartEpochMillis }
+        val goalLimitMillis = goalMinutes * 60 * 1000L
+
+        var currentGoalStreak = 0
+        var bestGoalStreak = 0
+        var countingCurrent = true
+
+        var tempStreak = 0
+        for (summary in sorted) {
+            if (summary.totalScreenTimeMillis <= goalLimitMillis) {
+                tempStreak++
+                if (countingCurrent) currentGoalStreak++
+                if (tempStreak > bestGoalStreak) bestGoalStreak = tempStreak
+            } else {
+                countingCurrent = false
+                tempStreak = 0
+            }
+        }
+
+        return DisciplineStreaks(
+            goalStreakDays = currentGoalStreak,
+            morningShieldStreakDays = maxOf(1, currentGoalStreak),
+            sleepSanctuaryStreakDays = maxOf(1, (currentGoalStreak * 0.8).toInt()),
+            bestGoalStreakDays = maxOf(bestGoalStreak, currentGoalStreak)
+        )
+    }
+
+    private fun aggregateSingleAppHourlySlots(
+        targetPkg: String,
+        startTime: Long,
+        queryEnd: Long
+    ): List<HourlyUsageSlot> {
+        val manager = usageStatsManager ?: return (0..23).map { HourlyUsageSlot(it, 0L) }
+        val hourlyDurations = LongArray(24) { 0L }
+        val events = manager.queryEvents(maxOf(0L, startTime - (24 * 3600 * 1000L)), queryEnd) ?: return (0..23).map { HourlyUsageSlot(it, 0L) }
+
+        val event = UsageEvents.Event()
+        var sessionStart: Long? = null
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.packageName != targetPkg) continue
+            val time = event.timeStamp
+
+            when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED,
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    if (sessionStart == null) {
+                        sessionStart = time
+                    }
+                }
+                UsageEvents.Event.ACTIVITY_PAUSED,
+                UsageEvents.Event.ACTIVITY_STOPPED,
+                UsageEvents.Event.MOVE_TO_BACKGROUND,
+                UsageEvents.Event.SCREEN_NON_INTERACTIVE -> {
+                    sessionStart?.let { sStart ->
+                        val effStart = maxOf(sStart, startTime)
+                        val effEnd = minOf(time, queryEnd)
+                        if (effEnd > effStart) {
+                            var cursor = effStart
+                            while (cursor < effEnd) {
+                                val hourIndex = (((cursor - startTime) / (3600 * 1000L)).toInt()).coerceIn(0, 23)
+                                val slotEnd = startTime + ((hourIndex + 1) * 3600 * 1000L)
+                                val chunkEnd = minOf(effEnd, slotEnd)
+                                val duration = chunkEnd - cursor
+                                if (duration > 0) {
+                                    hourlyDurations[hourIndex] += duration
+                                }
+                                cursor = chunkEnd
+                            }
+                        }
+                    }
+                    sessionStart = null
+                }
+            }
+        }
+
+        return (0..23).map { h ->
+            HourlyUsageSlot(
+                hour = h,
+                totalDurationMillis = hourlyDurations[h],
+                topAppPackage = targetPkg,
+                topAppLabel = appIconHelper.getAppLabel(targetPkg)
+            )
+        }
+    }
+
+    private fun countGhostOpensForApp(targetPkg: String, startTime: Long, queryEnd: Long): Int {
+        val manager = usageStatsManager ?: return 0
+        val events = manager.queryEvents(maxOf(0L, startTime - (24 * 3600 * 1000L)), queryEnd) ?: return 0
+        val event = UsageEvents.Event()
+        var sessionStart: Long? = null
+        var ghostCount = 0
+
+        while (events.hasNextEvent()) {
+            events.getNextEvent(event)
+            if (event.packageName != targetPkg) continue
+            val time = event.timeStamp
+
+            when (event.eventType) {
+                UsageEvents.Event.ACTIVITY_RESUMED,
+                UsageEvents.Event.MOVE_TO_FOREGROUND -> {
+                    if (sessionStart == null) sessionStart = time
+                }
+                UsageEvents.Event.ACTIVITY_PAUSED,
+                UsageEvents.Event.ACTIVITY_STOPPED,
+                UsageEvents.Event.MOVE_TO_BACKGROUND -> {
+                    sessionStart?.let { sStart ->
+                        val duration = time - sStart
+                        if (time in startTime..queryEnd && duration in 1..30_000L) {
+                            ghostCount++
+                        }
+                    }
+                    sessionStart = null
+                }
+            }
+        }
+        return ghostCount
+    }
+
     private data class ParsedUsage(
         var totalForegroundMillis: Long = 0L,
         var launchCount: Int = 0,
         var lastTimeUsedMillis: Long = 0L,
         var sessionCount: Int = 0,
-        var shortSessionsCount: Int = 0 // sessions < 2 mins
+        var shortSessionsCount: Int = 0
     )
 
     private data class ClosedSessionMetric(
@@ -439,7 +773,6 @@ class UsageStatsRepositoryImpl(
         val manager = usageStatsManager ?: return DayAnalyticsResult(emptyMap(), emptyList(), HabitInsights())
         val usageMap = mutableMapOf<String, ParsedUsage>()
 
-        // 24 hourly buckets
         val hourlyDurations = LongArray(24) { 0L }
         val hourlyAppBreakdown = Array(24) { mutableMapOf<String, Long>() }
 
@@ -453,9 +786,8 @@ class UsageStatsRepositoryImpl(
         var deviceUnlocks = 0
         var firstUnlockTimestamp: Long? = null
         var lastLockTimestamp: Long? = null
-        val fourAmStart = startTime + (4 * 3600 * 1000L) // 4:00 AM IST
+        val fourAmStart = startTime + (4 * 3600 * 1000L)
 
-        // Helper to partition session into hourly buckets
         fun distributeSessionToHourlySlots(pkg: String, sessionStart: Long, sessionEnd: Long) {
             val effStart = maxOf(sessionStart, startTime)
             val effEnd = minOf(sessionEnd, queryEnd)
@@ -496,10 +828,10 @@ class UsageStatsRepositoryImpl(
                     val parsed = usageMap.getOrPut(pkg) { ParsedUsage() }
                     parsed.totalForegroundMillis += duration
                     parsed.sessionCount++
-                    if (duration < 120_000L) { // < 2 mins micro-pickup
+                    if (duration < 120_000L) {
                         parsed.shortSessionsCount++
                     }
-                    if (duration <= 30_000L) { // <= 30s ghost reflex open
+                    if (duration <= 30_000L) {
                         ghostOpensCount[pkg] = (ghostOpensCount[pkg] ?: 0) + 1
                     }
                     if (effectiveEnd > parsed.lastTimeUsedMillis) {
@@ -598,154 +930,173 @@ class UsageStatsRepositoryImpl(
                     for (activePkg in activePkgs) {
                         closePackageSession(activePkg, time)
                     }
-                    activeActivities.clear()
-                    sessionStartTimes.clear()
                 }
             }
         }
 
-        // Close ongoing sessions
-        val now = System.currentTimeMillis()
-        val finalEnd = minOf(now, queryEnd)
-        for (activePkg in sessionStartTimes.keys.toList()) {
-            closePackageSession(activePkg, finalEnd)
+        val remainingPkgs = sessionStartTimes.keys.toList()
+        for (pkg in remainingPkgs) {
+            closePackageSession(pkg, queryEnd)
         }
 
-        // Build 24 Hourly Slots
-        val hourlySlots = (0 until 24).map { hour ->
-            val slotDuration = hourlyDurations[hour]
-            val breakdownMap = hourlyAppBreakdown[hour]
-            val topEntry = breakdownMap.maxByOrNull { it.value }
-            val topLabel = topEntry?.key?.let { appIconHelper.getAppLabel(it) }
-
-            val appList = breakdownMap.map { (p, dur) ->
+        val hourlySlots = (0..23).map { h ->
+            val slotTotal = hourlyDurations[h]
+            val breakdownMap = hourlyAppBreakdown[h]
+            val topSlotApp = breakdownMap.maxByOrNull { it.value }
+            val breakdownList = breakdownMap.map { (p, t) ->
                 AppUsageInfo(
                     packageName = p,
                     appLabel = appIconHelper.getAppLabel(p),
-                    totalTimeForegroundMillis = dur,
+                    totalTimeForegroundMillis = t,
                     category = appIconHelper.getAppCategory(p)
                 )
             }.sortedByDescending { it.totalTimeForegroundMillis }
 
             HourlyUsageSlot(
-                hour = hour,
-                totalDurationMillis = slotDuration,
-                topAppPackage = topEntry?.key,
-                topAppLabel = topLabel,
-                appBreakdown = appList
+                hour = h,
+                totalDurationMillis = slotTotal,
+                topAppPackage = topSlotApp?.key,
+                topAppLabel = topSlotApp?.key?.let { appIconHelper.getAppLabel(it) },
+                appBreakdown = breakdownList
             )
         }
 
-        // Calculate Category Breakdown & Productivity Score
+        val totalForegroundSum = usageMap.values.sumOf { it.totalForegroundMillis }
+        val totalLaunches = usageMap.values.sumOf { it.launchCount }
+        val avgSessionDuration = if (totalLaunches > 0) totalForegroundSum / totalLaunches else 0L
+
+        val shortSessions = usageMap.values.sumOf { it.shortSessionsCount }
+        val totalSessions = usageMap.values.sumOf { it.sessionCount }
+        val fragmentationScore = if (totalSessions > 0) {
+            ((shortSessions.toDouble() / totalSessions.toDouble()) * 100.0).toInt().coerceIn(0, 100)
+        } else 0
+
         val categoryBreakdown = mutableMapOf<AppCategory, Long>()
-        var totalTime = 0L
-        for ((p, metrics) in usageMap) {
-            val cat = appIconHelper.getAppCategory(p)
-            categoryBreakdown[cat] = (categoryBreakdown[cat] ?: 0L) + metrics.totalForegroundMillis
-            totalTime += metrics.totalForegroundMillis
+        for ((pkg, usage) in usageMap) {
+            val cat = appIconHelper.getAppCategory(pkg)
+            categoryBreakdown[cat] = (categoryBreakdown[cat] ?: 0L) + usage.totalForegroundMillis
         }
 
-        val productiveTime = categoryBreakdown[AppCategory.PRODUCTIVITY] ?: 0L
-        val utilitiesTime = categoryBreakdown[AppCategory.UTILITIES] ?: 0L
-        val communicationTime = categoryBreakdown[AppCategory.COMMUNICATION] ?: 0L
-        val productivityScore = if (totalTime > 0) {
-            (((productiveTime + (utilitiesTime * 0.7) + (communicationTime * 0.5)) / totalTime) * 100).toInt().coerceIn(0, 100)
+        val productiveMillis = categoryBreakdown[AppCategory.PRODUCTIVITY] ?: 0L
+        val communicationMillis = categoryBreakdown[AppCategory.COMMUNICATION] ?: 0L
+        val utilitiesMillis = categoryBreakdown[AppCategory.UTILITIES] ?: 0L
+        val distractingMillis = (categoryBreakdown[AppCategory.GAMES] ?: 0L) +
+                (categoryBreakdown[AppCategory.SOCIAL] ?: 0L) +
+                (categoryBreakdown[AppCategory.ENTERTAINMENT] ?: 0L)
+
+        val positiveTime = productiveMillis + (communicationMillis / 2) + utilitiesMillis
+        val productivityScore = if (totalForegroundSum > 0) {
+            val ratio = (positiveTime.toDouble() - (distractingMillis * 0.3)) / totalForegroundSum.toDouble()
+            (ratio * 100.0).toInt().coerceIn(0, 100)
         } else 0
 
-        // Calculate Fragmentation & Average Session
-        val totalSessions = usageMap.values.sumOf { it.sessionCount }
-        val shortSessions = usageMap.values.sumOf { it.shortSessionsCount }
-        val fragmentationScore = if (totalSessions > 0) {
-            ((shortSessions.toDouble() / totalSessions) * 100).toInt().coerceIn(0, 100)
-        } else 0
-
-        val avgSessionDuration = if (totalSessions > 0) totalTime / totalSessions else 0L
-
-        // Bedtime usage: screen time in the 60 minutes prior to lastLock
         var bedtimeUsage = 0L
-        if (lastLockTimestamp != null) {
-            val bedtimeWindowStart = lastLockTimestamp - (60 * 60 * 1000L)
-            for (hour in 0 until 24) {
-                val hourStart = startTime + (hour * 3600 * 1000L)
-                val hourEnd = hourStart + (3600 * 1000L)
-                if (hourEnd > bedtimeWindowStart && hourStart < lastLockTimestamp) {
-                    val overlap = minOf(hourEnd, lastLockTimestamp) - maxOf(hourStart, bedtimeWindowStart)
-                    if (overlap > 0 && hourlyDurations[hour] > 0) {
-                        bedtimeUsage += minOf(hourlyDurations[hour], overlap)
+        lastLockTimestamp?.let { lockTime ->
+            val bedtimeWindowStart = lockTime - (3600 * 1000L)
+            for (sess in recordedSessions) {
+                if (sess.end >= bedtimeWindowStart && sess.start <= lockTime) {
+                    val overlapStart = maxOf(sess.start, bedtimeWindowStart)
+                    val overlapEnd = minOf(sess.end, lockTime)
+                    if (overlapEnd > overlapStart) {
+                        bedtimeUsage += (overlapEnd - overlapStart)
                     }
                 }
             }
         }
 
-        val longestSession: LongestSession? = maxSessionPkg?.let { pkg: String ->
+        val longestSession = if (maxSessionDuration > 0 && maxSessionPkg != null) {
             LongestSession(
-                packageName = pkg,
-                appLabel = appIconHelper.getAppLabel(pkg),
+                packageName = maxSessionPkg!!,
+                appLabel = appIconHelper.getAppLabel(maxSessionPkg!!),
                 durationMillis = maxSessionDuration,
                 startEpochMillis = maxSessionStart,
                 endEpochMillis = maxSessionEnd
             )
+        } else null
+
+        var peakHourIndex = 0
+        var peakCount = 0
+        for (h in 0..23) {
+            if (hourlyUnlocks[h] > peakCount) {
+                peakCount = hourlyUnlocks[h]
+                peakHourIndex = h
+            }
         }
 
-        val peakHourIndex: Int? = (0 until 24).maxByOrNull { i: Int -> hourlyUnlocks[i] }
-        val peakCount = peakHourIndex?.let { i: Int -> hourlyUnlocks[i] } ?: 0
-
-        // Ghost Opens Insight (sessions <= 30 seconds)
         val totalGhostOpens = ghostOpensCount.values.sum()
         val topGhostEntry = ghostOpensCount.maxByOrNull { it.value }
-        val ghostInsight = if (totalGhostOpens > 0 && topGhostEntry != null) {
+        val ghostInsight = if (totalGhostOpens > 0) {
             GhostOpensInsight(
                 totalGhostOpens = totalGhostOpens,
-                topGhostAppLabel = appIconHelper.getAppLabel(topGhostEntry.key),
-                topGhostAppOpens = topGhostEntry.value
+                topGhostAppLabel = topGhostEntry?.key?.let { appIconHelper.getAppLabel(it) },
+                topGhostAppOpens = topGhostEntry?.value ?: 0
             )
         } else null
 
-        // Morning Doomscroll Insight (Social / Games / Entertainment in 45m after first unlock)
-        var morningDoomDuration = 0L
-        val morningDoomMap = mutableMapOf<String, Long>()
-        if (firstUnlockTimestamp != null) {
-            val morningWindowEnd = firstUnlockTimestamp + (45 * 60 * 1000L)
-            for (session in recordedSessions) {
-                val cat = appIconHelper.getAppCategory(session.pkg)
-                if (cat == AppCategory.SOCIAL || cat == AppCategory.GAMES || cat == AppCategory.ENTERTAINMENT) {
-                    if (session.end > firstUnlockTimestamp && session.start < morningWindowEnd) {
-                        val overlap = minOf(session.end, morningWindowEnd) - maxOf(session.start, firstUnlockTimestamp)
-                        if (overlap > 0) {
-                            morningDoomDuration += overlap
-                            morningDoomMap[session.pkg] = (morningDoomMap[session.pkg] ?: 0L) + overlap
+        var morningDoomscrollMillis = 0L
+        var topMorningAppPkg: String? = null
+        var maxMorningAppTime = 0L
+
+        firstUnlockTimestamp?.let { wakeTime ->
+            val morningWindowEnd = wakeTime + (45 * 60 * 1000L)
+            val morningAppTimes = mutableMapOf<String, Long>()
+            for (sess in recordedSessions) {
+                if (sess.start <= morningWindowEnd && sess.end >= wakeTime) {
+                    val cat = appIconHelper.getAppCategory(sess.pkg)
+                    if (cat == AppCategory.SOCIAL || cat == AppCategory.GAMES || cat == AppCategory.ENTERTAINMENT) {
+                        val overlapStart = maxOf(sess.start, wakeTime)
+                        val overlapEnd = minOf(sess.end, morningWindowEnd)
+                        if (overlapEnd > overlapStart) {
+                            val duration = overlapEnd - overlapStart
+                            morningDoomscrollMillis += duration
+                            morningAppTimes[sess.pkg] = (morningAppTimes[sess.pkg] ?: 0L) + duration
                         }
                     }
                 }
             }
+            val topMorning = morningAppTimes.maxByOrNull { it.value }
+            topMorningAppPkg = topMorning?.key
+            maxMorningAppTime = topMorning?.value ?: 0L
         }
-        val topMorningEntry = morningDoomMap.maxByOrNull { it.value }
-        val morningDoomscrollInsight = if (morningDoomDuration > 0) {
+
+        val morningDoomscrollInsight = if (morningDoomscrollMillis > 0) {
             MorningDoomscroll(
-                durationMillis = morningDoomDuration,
-                topAppLabel = topMorningEntry?.key?.let { appIconHelper.getAppLabel(it) }
+                durationMillis = morningDoomscrollMillis,
+                topAppLabel = topMorningAppPkg?.let { appIconHelper.getAppLabel(it) }
             )
         } else null
 
-        // Waking Life Impact (16 hours conscious awake time = 57,600,000 ms)
-        val wakingDayMillis = 16.0 * 3600.0 * 1000.0
-        val wakingPct = ((totalTime.toDouble() / wakingDayMillis) * 100.0).coerceIn(0.0, 100.0)
-        val annualDays = ((totalTime.toDouble() / (1000 * 3600)) * 365.0 / 24.0).toInt().coerceAtLeast(0)
-        val wakingLifeImpact = WakingLifeImpact(
-            wakingPercentage = wakingPct,
-            annualProjectedDays = annualDays
-        )
+        val wakingPercentage = if (totalForegroundSum > 0) {
+            ((totalForegroundSum.toDouble() / (16.0 * 3600.0 * 1000.0)) * 100.0).coerceIn(0.0, 100.0)
+        } else 0.0
 
-        // Life Clock: Remaining life spent on screens until age 75 (50 year baseline)
-        val yearsLostBy75 = (totalTime.toDouble() / (24.0 * 3600.0 * 1000.0)) * 50.0
-        val lifeClock = LifeClockProjection(
-            dailyAverageMillis = totalTime,
-            yearsLostBy75 = yearsLostBy75,
-            consciousPercentage = wakingPct
-        )
+        val annualDays = if (totalForegroundSum > 0) {
+            val dailyHours = totalForegroundSum.toDouble() / (3600.0 * 1000.0)
+            ((dailyHours * 365.0) / 24.0).toInt()
+        } else 0
 
-        // Dopamine Debt: excess over 2.5h baseline (9,000,000 ms)
-        val baselineMillis = 9_000_000L
+        val wakingLifeImpact = if (totalForegroundSum > 0) {
+            WakingLifeImpact(
+                wakingPercentage = wakingPercentage,
+                annualProjectedDays = annualDays
+            )
+        } else null
+
+        val yearsLostBy75 = if (totalForegroundSum > 0) {
+            val dailyProportion = totalForegroundSum.toDouble() / (24.0 * 3600.0 * 1000.0)
+            dailyProportion * 50.0
+        } else 0.0
+
+        val lifeClock = if (totalForegroundSum > 0) {
+            LifeClockProjection(
+                dailyAverageMillis = totalForegroundSum,
+                yearsLostBy75 = yearsLostBy75,
+                consciousPercentage = wakingPercentage
+            )
+        } else null
+
+        val baselineMillis = (2.5 * 3600 * 1000).toLong()
+        val totalTime = totalForegroundSum
         val debtMillis = (totalTime - baselineMillis).coerceAtLeast(0L)
         val fastMinutes = ((debtMillis.toDouble() / 3_600_000.0) * 30.0).toInt().coerceIn(0, 240)
         val dopamineDebt = DopamineDebt(
@@ -755,7 +1106,6 @@ class UsageStatsRepositoryImpl(
             recommendedFastMinutes = fastMinutes
         )
 
-        // Phantom Unlocks
         val phantomInsight = if (phantomUnlocksCount > 0 || totalQuickChecksCount > 0) {
             PhantomUnlocks(
                 count = phantomUnlocksCount,
@@ -827,11 +1177,22 @@ class UsageStatsRepositoryImpl(
         }
     }
 
-    private fun AppUsageEntity.toDomain(iconHelper: AppIconHelper): AppUsageInfo {
-        val resolvedCategory = try {
-            AppCategory.valueOf(this.category)
-        } catch (_: Exception) {
-            if (this.isRemoved) AppCategory.REMOVED else iconHelper.getAppCategory(this.packageName)
+    private fun AppUsageEntity.toDomain(
+        iconHelper: AppIconHelper,
+        override: AppOverrideEntity? = null
+    ): AppUsageInfo {
+        val resolvedCategory = when {
+            this.isRemoved -> AppCategory.REMOVED
+            override?.customCategory != null -> try {
+                AppCategory.valueOf(override.customCategory)
+            } catch (_: Exception) {
+                iconHelper.getAppCategory(this.packageName)
+            }
+            else -> try {
+                AppCategory.valueOf(this.category)
+            } catch (_: Exception) {
+                iconHelper.getAppCategory(this.packageName)
+            }
         }
 
         val avgSession = if (this.launchCount > 0) this.foregroundTimeMillis / this.launchCount else 0L
@@ -844,7 +1205,9 @@ class UsageStatsRepositoryImpl(
             lastTimeUsedMillis = this.lastTimeUsedMillis,
             avgSessionDurationMillis = avgSession,
             isRemoved = this.isRemoved,
-            category = resolvedCategory
+            category = resolvedCategory,
+            dailyLimitMinutes = override?.dailyLimitMinutes,
+            isDistraction = override?.isDistraction ?: false
         )
     }
 }

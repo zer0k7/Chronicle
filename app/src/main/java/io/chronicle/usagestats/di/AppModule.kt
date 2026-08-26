@@ -7,14 +7,19 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.chronicle.usagestats.core.util.AppIconHelper
+import io.chronicle.usagestats.data.local.dao.AppOverrideDao
 import io.chronicle.usagestats.data.local.dao.UsageDao
 import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
 import io.chronicle.usagestats.data.repository.UsageStatsRepositoryImpl
 import io.chronicle.usagestats.domain.repository.UsageRepository
+import io.chronicle.usagestats.domain.usecase.CalculateStreaksUseCase
+import io.chronicle.usagestats.domain.usecase.ExportCsvUseCase
 import io.chronicle.usagestats.domain.usecase.ExportPdfReportUseCase
 import io.chronicle.usagestats.domain.usecase.ExportReportImageUseCase
+import io.chronicle.usagestats.domain.usecase.GetAppDetailUseCase
 import io.chronicle.usagestats.domain.usecase.GetReportUseCase
 import io.chronicle.usagestats.domain.usecase.GetTimelineUsageUseCase
+import io.chronicle.usagestats.domain.usecase.SaveAppOverrideUseCase
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
 import javax.inject.Singleton
 
@@ -43,9 +48,10 @@ object AppModule {
     fun provideUsageRepository(
         @ApplicationContext context: Context,
         usageDao: UsageDao,
+        appOverrideDao: AppOverrideDao,
         appIconHelper: AppIconHelper
     ): UsageRepository {
-        return UsageStatsRepositoryImpl(context, usageDao, appIconHelper)
+        return UsageStatsRepositoryImpl(context, usageDao, appOverrideDao, appIconHelper)
     }
 
     @Provides
@@ -70,6 +76,38 @@ object AppModule {
         usageRepository: UsageRepository
     ): SyncUsageDataUseCase {
         return SyncUsageDataUseCase(usageRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetAppDetailUseCase(
+        usageRepository: UsageRepository
+    ): GetAppDetailUseCase {
+        return GetAppDetailUseCase(usageRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideCalculateStreaksUseCase(
+        usageRepository: UsageRepository
+    ): CalculateStreaksUseCase {
+        return CalculateStreaksUseCase(usageRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSaveAppOverrideUseCase(
+        usageRepository: UsageRepository
+    ): SaveAppOverrideUseCase {
+        return SaveAppOverrideUseCase(usageRepository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExportCsvUseCase(
+        usageRepository: UsageRepository
+    ): ExportCsvUseCase {
+        return ExportCsvUseCase(usageRepository)
     }
 
     @Provides

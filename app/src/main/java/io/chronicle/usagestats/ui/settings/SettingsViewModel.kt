@@ -7,11 +7,13 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.chronicle.usagestats.core.updater.AppUpdateInfo
 import io.chronicle.usagestats.core.updater.AppUpdateManager
 import io.chronicle.usagestats.core.updater.UpdateState
+import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.data.local.ChronicleDatabase
 import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
 import io.chronicle.usagestats.domain.model.AccentColorPreset
 import io.chronicle.usagestats.domain.model.ThemeMode
 import io.chronicle.usagestats.domain.model.UserSettings
+import io.chronicle.usagestats.domain.usecase.ExportCsvUseCase
 import io.chronicle.usagestats.worker.NotificationHelper
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -27,6 +29,7 @@ import javax.inject.Inject
 class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
     private val appUpdateManager: AppUpdateManager,
+    private val exportCsvUseCase: ExportCsvUseCase,
     private val database: ChronicleDatabase
 ) : ViewModel() {
 
@@ -150,8 +153,16 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun exportCsvData(context: Context) {
-        // Implementation for later
-        _dataActionMessage.value = "Exported to Downloads"
+        viewModelScope.launch {
+            try {
+                val start = DateTimeUtils.toZonedDateTime(System.currentTimeMillis()).minusYears(2).toInstant().toEpochMilli()
+                val end = System.currentTimeMillis()
+                exportCsvUseCase(context, start, end)
+                _dataActionMessage.value = "CSV exported successfully"
+            } catch (e: Exception) {
+                _dataActionMessage.value = "Failed to export CSV: ${e.localizedMessage ?: "Unknown error"}"
+            }
+        }
     }
 
     fun checkForUpdates() {

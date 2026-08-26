@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_goal_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_card"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:gravity="center">
+
+    <TextView
+        android:id="@+id/tv_widget_goal_title"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="@string/timeline_total_screen_time"
+        android:textColor="#A0A0A0"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:textAllCaps="true" />
+
+    <TextView
+        android:id="@+id/tv_widget_goal_duration"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="0h 0m"
+        android:textColor="#00E5FF"
+        android:textSize="22sp"
+        android:textStyle="bold" />
+
+    <ProgressBar
+        android:id="@+id/pb_widget_goal_progress"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="6dp"
+        android:layout_marginTop="10dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_progress_bar" />
+
+    <TextView
+        android:id="@+id/tv_widget_goal_subtitle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="6dp"
+        android:text="@string/goal_progress_label"
+        android:textColor="#C0C0C0"
+        android:textSize="11sp" />
+
+</LinearLayout>

@@ -23,6 +23,8 @@ class DailyUsageSyncWorker @AssistedInject constructor(
 
         return try {
             syncUsageDataUseCase.syncToday()
+            io.chronicle.usagestats.ui.widget.ChronicleGoalWidgetProvider.updateAllWidgets(context)
+            io.chronicle.usagestats.ui.widget.ChronicleTimelineWidgetProvider.updateAllWidgets(context)
             Result.success()
         } catch (_: Exception) {
             Result.retry()

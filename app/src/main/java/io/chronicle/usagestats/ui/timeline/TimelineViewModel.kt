@@ -4,10 +4,14 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.chronicle.usagestats.core.util.DateTimeUtils
+import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
+import io.chronicle.usagestats.domain.model.AppDetailInfo
+import io.chronicle.usagestats.domain.model.CustomAppOverride
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
-import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
+import io.chronicle.usagestats.domain.usecase.GetAppDetailUseCase
 import io.chronicle.usagestats.domain.usecase.GetTimelineUsageUseCase
+import io.chronicle.usagestats.domain.usecase.SaveAppOverrideUseCase
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -24,6 +29,8 @@ import javax.inject.Inject
 class TimelineViewModel @Inject constructor(
     private val getTimelineUsageUseCase: GetTimelineUsageUseCase,
     private val syncUsageDataUseCase: SyncUsageDataUseCase,
+    private val getAppDetailUseCase: GetAppDetailUseCase,
+    private val saveAppOverrideUseCase: SaveAppOverrideUseCase,
     private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
@@ -36,6 +43,9 @@ class TimelineViewModel @Inject constructor(
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
+    private val _selectedAppPackage = MutableStateFlow<String?>(null)
+    val selectedAppPackage: StateFlow<String?> = _selectedAppPackage.asStateFlow()
+
     val dailyGoalMinutes: StateFlow<Int> = userPreferencesRepository.userSettingsFlow
         .map { it.dailyGoalMinutes }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 150)
@@ -45,6 +55,18 @@ class TimelineViewModel @Inject constructor(
         }
         .flatMapLatest { (period, dateMillis) ->
             getTimelineUsageUseCase(period, dateMillis)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val selectedAppDetail: StateFlow<AppDetailInfo?> = combine(_selectedAppPackage, _referenceDate) { pkg, dateMillis ->
+            Pair(pkg, dateMillis)
+        }
+        .flatMapLatest { (pkg, dateMillis) ->
+            if (pkg != null) {
+                getAppDetailUseCase(pkg, dateMillis)
+            } else {
+                flowOf(null)
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -74,6 +96,17 @@ class TimelineViewModel @Inject constructor(
 
     fun selectHour(hour: Int?) {
         _selectedHour.value = hour
+    }
+
+    fun selectApp(packageName: String?) {
+        _selectedAppPackage.value = packageName
+    }
+
+    fun saveAppOverride(override: CustomAppOverride) {
+        viewModelScope.launch {
+            saveAppOverrideUseCase(override)
+            refreshData()
+        }
     }
 
     fun navigatePrevious() {

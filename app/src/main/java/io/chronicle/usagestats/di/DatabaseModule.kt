@@ -9,6 +9,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import io.chronicle.usagestats.core.util.Constants
 import io.chronicle.usagestats.data.local.ChronicleDatabase
+import io.chronicle.usagestats.data.local.dao.AppOverrideDao
 import io.chronicle.usagestats.data.local.dao.UsageDao
 import javax.inject.Singleton
 
@@ -32,5 +33,11 @@ object DatabaseModule {
     @Singleton
     fun provideUsageDao(database: ChronicleDatabase): UsageDao {
         return database.usageDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideAppOverrideDao(database: ChronicleDatabase): AppOverrideDao {
+        return database.appOverrideDao()
     }
 }

@@ -29,7 +29,8 @@ data class AppUsageInfo(
     val avgSessionDurationMillis: Long = 0L,
     val isRemoved: Boolean = false,
     val category: AppCategory = AppCategory.OTHER,
-    val dailyLimitMinutes: Int? = null
+    val dailyLimitMinutes: Int? = null,
+    val isDistraction: Boolean = false
 )
 
 data class HourlyUsageSlot(
@@ -82,6 +83,13 @@ data class PhantomUnlocks(
     val totalQuickChecks: Int
 )
 
+data class DisciplineStreaks(
+    val goalStreakDays: Int = 0,
+    val morningShieldStreakDays: Int = 0,
+    val sleepSanctuaryStreakDays: Int = 0,
+    val bestGoalStreakDays: Int = 0
+)
+
 data class HabitInsights(
     val deviceUnlocks: Int = 0,
     val firstUnlockEpochMillis: Long? = null,
@@ -100,7 +108,8 @@ data class HabitInsights(
     val wakingLifeImpact: WakingLifeImpact? = null,
     val lifeClock: LifeClockProjection? = null,
     val dopamineDebt: DopamineDebt? = null,
-    val phantomUnlocks: PhantomUnlocks? = null
+    val phantomUnlocks: PhantomUnlocks? = null,
+    val disciplineStreaks: DisciplineStreaks? = null
 )
 
 data class TrendComparison(
@@ -168,5 +177,29 @@ enum class ExportDateRange {
 
 enum class ExportFormat {
     IMAGE,
-    PDF
+    PDF,
+    CSV
 }
+
+data class CustomAppOverride(
+    val packageName: String,
+    val customCategory: AppCategory? = null,
+    val isDistraction: Boolean = false,
+    val dailyLimitMinutes: Int? = null
+)
+
+data class AppDetailInfo(
+    val packageName: String,
+    val appLabel: String,
+    val category: AppCategory,
+    val isRemoved: Boolean,
+    val isDistraction: Boolean,
+    val dailyLimitMinutes: Int?,
+    val todayForegroundMillis: Long,
+    val todayLaunchCount: Int,
+    val todayAvgSessionMillis: Long,
+    val percentageOfTotalDaily: Float,
+    val hourlySlots: List<HourlyUsageSlot>,
+    val recentDaysUsage: List<Pair<Long, Long>>, // (dateEpochMillis, durationMillis)
+    val ghostOpensCount: Int
+)

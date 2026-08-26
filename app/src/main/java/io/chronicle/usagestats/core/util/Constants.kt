@@ -13,5 +13,5 @@ object Constants {
     const val DEFAULT_NOTIFICATION_MINUTE = 0
 
     const val DATABASE_NAME = "chronicle_database.db"
-    const val DATABASE_VERSION = 1
+    const val DATABASE_VERSION = 2
 }

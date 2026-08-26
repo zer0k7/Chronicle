@@ -7,14 +7,19 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.domain.model.AppCategory
+import io.chronicle.usagestats.domain.model.AppDetailInfo
+import io.chronicle.usagestats.domain.model.CustomAppOverride
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.ExportDateRange
 import io.chronicle.usagestats.domain.model.ExportFormat
 import io.chronicle.usagestats.domain.model.ReportFilter
 import io.chronicle.usagestats.domain.repository.UsageRepository
+import io.chronicle.usagestats.domain.usecase.ExportCsvUseCase
 import io.chronicle.usagestats.domain.usecase.ExportPdfReportUseCase
 import io.chronicle.usagestats.domain.usecase.ExportReportImageUseCase
+import io.chronicle.usagestats.domain.usecase.GetAppDetailUseCase
 import io.chronicle.usagestats.domain.usecase.GetReportUseCase
+import io.chronicle.usagestats.domain.usecase.SaveAppOverrideUseCase
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -23,6 +28,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -40,6 +46,9 @@ class ReportViewModel @Inject constructor(
     private val syncUsageDataUseCase: SyncUsageDataUseCase,
     private val exportPdfReportUseCase: ExportPdfReportUseCase,
     private val exportReportImageUseCase: ExportReportImageUseCase,
+    private val exportCsvUseCase: ExportCsvUseCase,
+    private val getAppDetailUseCase: GetAppDetailUseCase,
+    private val saveAppOverrideUseCase: SaveAppOverrideUseCase,
     private val usageRepository: UsageRepository
 ) : ViewModel() {
 
@@ -52,11 +61,26 @@ class ReportViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ReportUiState())
     val uiState: StateFlow<ReportUiState> = _uiState.asStateFlow()
 
+    private val _selectedAppPackage = MutableStateFlow<String?>(null)
+    val selectedAppPackage: StateFlow<String?> = _selectedAppPackage.asStateFlow()
+
     val reportData: StateFlow<DailyUsageSummary?> = combine(_selectedDate, _filter) { date, filter ->
             Pair(date, filter)
         }
         .flatMapLatest { (date, filter) ->
             getReportUseCase.getDailyReport(date, filter)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val selectedAppDetail: StateFlow<AppDetailInfo?> = combine(_selectedAppPackage, _selectedDate) { pkg, dateMillis ->
+            Pair(pkg, dateMillis)
+        }
+        .flatMapLatest { (pkg, dateMillis) ->
+            if (pkg != null) {
+                getAppDetailUseCase(pkg, dateMillis)
+            } else {
+                flowOf(null)
+            }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
@@ -86,6 +110,17 @@ class ReportViewModel @Inject constructor(
         _filter.value = _filter.value.copy(selectedCategory = category)
     }
 
+    fun selectApp(packageName: String?) {
+        _selectedAppPackage.value = packageName
+    }
+
+    fun saveAppOverride(override: CustomAppOverride) {
+        viewModelScope.launch {
+            saveAppOverrideUseCase(override)
+            syncUsageDataUseCase.syncDate(_selectedDate.value)
+        }
+    }
+
     fun showExportDialog() {
         _uiState.value = _uiState.value.copy(showExportDialog = true)
     }
@@ -106,6 +141,16 @@ class ReportViewModel @Inject constructor(
 
         viewModelScope.launch {
             try {
+                if (format == ExportFormat.CSV) {
+                    exportCsvUseCase(context, startMillis, endMillis)
+                    _uiState.value = _uiState.value.copy(
+                        isExporting = false,
+                        exportMessage = "CSV export generated successfully.",
+                        exportSuccess = true
+                    )
+                    return@launch
+                }
+
                 if (range == ExportDateRange.TODAY) {
                     val summary = reportData.value ?: return@launch
                     if (format == ExportFormat.PDF) {
@@ -131,7 +176,6 @@ class ReportViewModel @Inject constructor(
                         val result = exportPdfReportUseCase.executeRange(rangeReport)
                         handleExportResult(context, result, "application/pdf", "Share Analytics Dossier")
                     } else {
-                        // Aggregate into summary for image
                         val aggregateSummary = DailyUsageSummary(
                             dateEpochMillis = startMillis,
                             totalScreenTimeMillis = rangeReport.totalScreenTimeMillis,
