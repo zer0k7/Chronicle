@@ -140,10 +140,10 @@ fun DataUsageScreen(
 
     if (showCustomRangePicker) {
         ChronicleDateRangePickerDialog(
-            initialStartDate = referenceDate - (6 * 86400000L),
-            initialEndDate = referenceDate,
+            initialStartEpochMillis = referenceDate - (6 * 86400000L),
+            initialEndEpochMillis = referenceDate,
             onDismissRequest = { showCustomRangePicker = false },
-            onRangeSelected = { start, end ->
+            onDateRangeSelected = { start, end ->
                 showCustomRangePicker = false
                 viewModel.exportPdf(start, end) { uri ->
                     if (uri != null) {
@@ -744,8 +744,9 @@ fun DataUsageScreen(
 
         snackbarMessage?.let { msg ->
             ChronicleSnackbar(
+                visible = true,
                 message = msg,
-                type = SnackbarType.Info,
+                type = SnackbarType.INFO,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 96.dp, start = 16.dp, end = 16.dp)

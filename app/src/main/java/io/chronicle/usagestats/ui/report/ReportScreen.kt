@@ -428,12 +428,12 @@ fun ReportScreen(
                         AppCategory.PRODUCTIVITY -> stringResource(R.string.category_productivity)
                         AppCategory.SOCIAL -> stringResource(R.string.category_social)
                         AppCategory.ENTERTAINMENT -> stringResource(R.string.category_entertainment)
-                        AppCategory.GAMES -> stringResource(R.string.category_games)
+                        AppCategory.GAMES, AppCategory.GAMING -> stringResource(R.string.category_games)
                         AppCategory.COMMUNICATION -> "Communication"
                         AppCategory.UTILITIES -> stringResource(R.string.category_utilities)
                         AppCategory.SYSTEM -> stringResource(R.string.category_system)
                         AppCategory.REMOVED -> stringResource(R.string.category_removed)
-                        AppCategory.OTHER -> stringResource(R.string.category_other)
+                        else -> stringResource(R.string.category_other)
                     }
                     FilterChip(
                         selected = filter.selectedCategory == category,

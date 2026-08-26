@@ -6,7 +6,9 @@ enum class AppCategory {
     ENTERTAINMENT,
     PRODUCTIVITY,
     GAMING,
+    GAMES,
     COMMUNICATION,
+    UTILITIES,
     EDUCATION,
     NEWS,
     SYSTEM,
@@ -32,12 +34,14 @@ data class AppUsageInfo(
     val packageName: String,
     val appLabel: String,
     val totalTimeForegroundMillis: Long,
-    val category: AppCategory = AppCategory.OTHER,
+    val launchCount: Int = 0,
+    val lastTimeUsedMillis: Long = 0L,
+    val avgSessionDurationMillis: Long = 0L,
     val isRemoved: Boolean = false,
-    val isDistraction: Boolean = false,
-    val isWifiPreferred: Boolean = false,
+    val category: AppCategory = AppCategory.OTHER,
     val dailyLimitMinutes: Int? = null,
-    val launchCount: Int = 0
+    val isDistraction: Boolean = false,
+    val isWifiPreferred: Boolean = false
 )
 
 data class HourlyUsageSlot(
@@ -45,52 +49,108 @@ data class HourlyUsageSlot(
     val totalDurationMillis: Long,
     val activeAppCount: Int = 0,
     val topAppPackage: String? = null,
-    val topAppLabel: String? = null
+    val topAppLabel: String? = null,
+    val appBreakdown: List<AppUsageInfo> = emptyList()
 )
 
 data class WakingLifeMetrics(
-    val screenPercentageOfWakingHours: Double,
-    val projectedYearsLostInLifetime: Double,
-    val daysSpentPerYear: Double,
+    val screenPercentageOfWakingHours: Double = 0.0,
+    val projectedYearsLostInLifetime: Double = 0.0,
+    val daysSpentPerYear: Double = 0.0,
     val wakingHoursAssumed: Int = 16
 )
 
 data class LifeClockProjection(
-    val dailyAverageMillis: Long,
-    val lifetimeYearsLost: Double, // based on 50 remaining years
-    val consciousLifePercentage: Double
+    val dailyAverageMillis: Long = 0L,
+    val yearsLostBy75: Double = 0.0,
+    val lifetimeYearsLost: Double = yearsLostBy75,
+    val consciousPercentage: Double = 0.0,
+    val consciousLifePercentage: Double = consciousPercentage
 )
 
 data class DopamineDebt(
-    val totalScreenTimeMillis: Long,
-    val baselineScreenTimeMillis: Long, // e.g. 2.5 hours
-    val debtMillis: Long,
-    val recommendedDigitalFastMinutes: Int
+    val totalScreenTimeMillis: Long = 0L,
+    val weeklyActualMillis: Long = totalScreenTimeMillis,
+    val baselineScreenTimeMillis: Long = 0L,
+    val weeklyBaselineMillis: Long = baselineScreenTimeMillis,
+    val debtMillis: Long = 0L,
+    val recommendedDigitalFastMinutes: Int = 0,
+    val recommendedFastMinutes: Int = recommendedDigitalFastMinutes
 )
 
 data class PhantomUnlocks(
-    val totalUnlocks: Int,
-    val quickRelapseUnlocks: Int, // unlocked and locked within 30 seconds
-    val averageMinutesBetweenUnlocks: Int
+    val count: Int = 0,
+    val totalUnlocks: Int = count,
+    val totalQuickChecks: Int = 0,
+    val quickRelapseUnlocks: Int = totalQuickChecks,
+    val averageMinutesBetweenUnlocks: Int = 0
 )
 
 data class DisciplineStreaks(
-    val currentGoalStreakDays: Int,
-    val bestGoalStreakDays: Int,
-    val morningShieldStreakDays: Int,
-    val sleepSanctuaryStreakDays: Int
+    val goalStreakDays: Int = 0,
+    val currentGoalStreakDays: Int = goalStreakDays,
+    val bestGoalStreakDays: Int = 0,
+    val morningShieldStreakDays: Int = 0,
+    val sleepSanctuaryStreakDays: Int = 0
+)
+
+data class LongestSession(
+    val packageName: String,
+    val appLabel: String,
+    val durationMillis: Long,
+    val startEpochMillis: Long = 0L,
+    val endEpochMillis: Long = 0L
+)
+
+data class GhostOpensInsight(
+    val totalGhostOpens: Int = 0,
+    val topGhostAppLabel: String? = null,
+    val topGhostAppOpens: Int = 0
+)
+
+data class MorningDoomscroll(
+    val durationMillis: Long = 0L,
+    val topAppLabel: String? = null
+)
+
+data class WakingLifeImpact(
+    val wakingPercentage: Double = 0.0,
+    val annualProjectedDays: Int = 0
+)
+
+data class ClosedSessionMetric(
+    val pkg: String,
+    val start: Long,
+    val end: Long,
+    val duration: Long
 )
 
 data class HabitInsights(
-    val totalPickups: Int,
-    val pickupFrequencyMinutes: Int,
-    val morningDoomscrollMillis: Long,
-    val bedtimeRevengeMillis: Long,
-    val ghostOpensCount: Int, // opens <30s
+    val totalPickups: Int = 0,
+    val pickupFrequencyMinutes: Int = 0,
+    val morningDoomscrollMillis: Long = 0L,
+    val bedtimeRevengeMillis: Long = 0L,
+    val ghostOpensCount: Int = 0,
+    val firstUnlockEpochMillis: Long? = null,
+    val lastLockEpochMillis: Long? = null,
+    val bedtimeUsageMillis: Long = 0L,
+    val avgSessionDurationMillis: Long = 0L,
+    val fragmentationScore: Int = 0,
+    val productivityScore: Int = 0,
+    val categoryBreakdown: Map<AppCategory, Long> = emptyMap(),
+    val longestSession: LongestSession? = null,
+    val peakUnlockHour: Int = 0,
+    val peakUnlockCount: Int = 0,
+    val hourlyUnlocks: List<Int> = emptyList(),
+    val ghostOpens: GhostOpensInsight? = null,
+    val morningDoomscroll: MorningDoomscroll? = null,
+    val wakingLifeImpact: WakingLifeImpact? = null,
+    val lifeClock: LifeClockProjection? = null,
     val wakingLife: WakingLifeMetrics? = null,
     val dopamineDebt: DopamineDebt? = null,
     val phantomUnlocks: PhantomUnlocks? = null,
-    val disciplineStreaks: DisciplineStreaks? = null
+    val disciplineStreaks: DisciplineStreaks? = null,
+    val deviceUnlocks: Int = totalPickups
 )
 
 data class TrendComparison(

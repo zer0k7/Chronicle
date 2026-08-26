@@ -36,12 +36,12 @@ private fun getCategoryColor(category: AppCategory): Color {
         AppCategory.PRODUCTIVITY -> Color(0xFF3B82F6) // Blue
         AppCategory.SOCIAL -> Color(0xFF8B5CF6) // Violet
         AppCategory.ENTERTAINMENT -> Color(0xFFF59E0B) // Amber
-        AppCategory.GAMES -> Color(0xFFEF4444) // Red
+        AppCategory.GAMES, AppCategory.GAMING -> Color(0xFFEF4444) // Red
         AppCategory.COMMUNICATION -> Color(0xFF06B6D4) // Cyan
         AppCategory.UTILITIES -> Color(0xFF10B981) // Emerald Green
         AppCategory.SYSTEM -> Color(0xFF6B7280) // Gray
         AppCategory.REMOVED -> Color(0xFF9CA3AF) // Slate
-        AppCategory.OTHER, AppCategory.ALL -> Color(0xFF64748B)
+        else -> Color(0xFF64748B)
     }
 }
 

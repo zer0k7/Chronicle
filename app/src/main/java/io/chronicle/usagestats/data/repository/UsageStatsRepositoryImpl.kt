@@ -12,7 +12,11 @@ import io.chronicle.usagestats.data.local.entity.AppUsageEntity
 import io.chronicle.usagestats.data.local.entity.DailySummaryEntity
 import io.chronicle.usagestats.domain.model.AppCategory
 import io.chronicle.usagestats.domain.model.AppDetailInfo
+import io.chronicle.usagestats.domain.model.AppHabitLoop
 import io.chronicle.usagestats.domain.model.AppUsageInfo
+import io.chronicle.usagestats.domain.model.BurnoutRisk
+import io.chronicle.usagestats.domain.model.ClosedSessionMetric
+import io.chronicle.usagestats.domain.model.ContinuousDoomscrollSession
 import io.chronicle.usagestats.domain.model.CustomAppOverride
 import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.DisciplineStreaks
@@ -25,10 +29,12 @@ import io.chronicle.usagestats.domain.model.LongestSession
 import io.chronicle.usagestats.domain.model.MorningDoomscroll
 import io.chronicle.usagestats.domain.model.PhantomUnlocks
 import io.chronicle.usagestats.domain.model.RangeUsageReport
+import io.chronicle.usagestats.domain.model.ScreenTimeForecast
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.domain.model.TrendComparison
 import io.chronicle.usagestats.domain.model.WakingLifeImpact
+import io.chronicle.usagestats.domain.model.WeeklyExecutiveBriefing
 import io.chronicle.usagestats.domain.repository.UsageRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -780,7 +786,8 @@ class UsageStatsRepositoryImpl(
     private data class DayAnalyticsResult(
         val appUsageMap: Map<String, ParsedUsage>,
         val hourlySlots: List<HourlyUsageSlot>,
-        val habitInsights: HabitInsights
+        val habitInsights: HabitInsights,
+        val recordedSessions: List<ClosedSessionMetric> = emptyList()
     )
 
     private fun aggregateDayData(startTime: Long, queryEnd: Long): DayAnalyticsResult {
@@ -1151,7 +1158,8 @@ class UsageStatsRepositoryImpl(
         return DayAnalyticsResult(
             appUsageMap = usageMap,
             hourlySlots = hourlySlots,
-            habitInsights = habitInsights
+            habitInsights = habitInsights,
+            recordedSessions = recordedSessions
         )
     }
 

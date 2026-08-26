@@ -125,6 +125,15 @@ object DateTimeUtils {
         return toZonedDateTime(epochMillis).format(YEAR_FORMATTER)
     }
 
+    fun formatDurationMinutes(minutes: Long): String {
+        return formatDuration(minutes * 60 * 1000L)
+    }
+
+    fun formatTime(epochMillis: Long): String {
+        val zdt = toZonedDateTime(epochMillis)
+        return zdt.format(TIME_FORMATTER)
+    }
+
     fun formatTime(hour: Int, minute: Int): String {
         val time = LocalTime.of(hour, minute)
         return time.format(TIME_FORMATTER)

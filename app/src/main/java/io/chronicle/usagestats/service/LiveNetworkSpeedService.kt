@@ -87,7 +87,7 @@ class LiveNetworkSpeedService : Service() {
 
     private fun buildNotification(title: String, content: String) =
         NotificationCompat.Builder(this, CHANNEL_ID)
-            .setSmallIcon(R.drawable.ic_notification)
+            .setSmallIcon(R.drawable.ic_chronicle_logo)
             .setContentTitle(title)
             .setContentText(content)
             .setOngoing(true)

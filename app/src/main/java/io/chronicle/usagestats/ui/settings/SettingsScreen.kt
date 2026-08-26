@@ -911,6 +911,7 @@ private fun PermissionStatusRow(title: String, isGranted: Boolean, onClick: () -
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DailyDataBudgetDialog(
     initialMb: Int,
@@ -995,6 +996,7 @@ private fun DailyDataBudgetDialog(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun MonthlyDataBudgetDialog(
     initialGb: Int,

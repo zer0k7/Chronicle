@@ -397,6 +397,7 @@
     <string name="settings_monthly_data_budget">Monthly Data Quota</string>
     <string name="settings_monthly_data_budget_desc">Set overall billing cycle allowance (e.g. 50 GB)</string>
     <string name="settings_billing_cycle_day">Billing Cycle Reset Day</string>
+    <string name="settings_billing_cycle_day_desc">Day %1$d of every month</string>
     <string name="settings_data_alerts">High Data Usage Alerts</string>
     <string name="settings_data_alerts_desc">Notify when approaching 90% of daily data quota</string>
 
