@@ -458,5 +458,13 @@
 
     <string name="limit_monitor_notification_title">Chronicle Focus Guard</string>
     <string name="limit_monitor_notification_text">App limits are actively enforced</string>
+
+    <!-- Home Screen Widgets Labels -->
+    <string name="widget_label_device_unlocks">Device Unlocks</string>
+    <string name="widget_label_ghost_reflex">Ghost Reflex</string>
+    <string name="widget_label_ghost_sub">Micro-checks (&lt;30s)</string>
+    <string name="widget_label_digital_zen">Digital Zen</string>
+    <string name="widget_label_screen_time">Screen Time</string>
+    <string name="widget_label_bandwidth">Bandwidth</string>
 </resources>
 
