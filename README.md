@@ -97,6 +97,13 @@ Tap any application on the Timeline or Analytics screen to open a modal dossier 
 * **Paginated Vector PDF:** Multi-page reports with thematic color palettes, category distribution charts, and data breakdowns.
 * **Shareable Infographics:** High-resolution PNG summary cards rendered directly on-device.
 
+### 7. Iron Discipline App Limits & Blocker Suite
+* **Hardcore App Restrictions:** Set daily minute budgets per application with live foreground polling via `AppLimitMonitorService`.
+* **Iron Discipline Mode (No Bypass):** Complete app lockout with zero bypass mechanisms until 12:00 AM IST.
+* **Cognitive Typing Challenge:** Type a 200-character mindful passage with zero mistakes and disabled auto-correct to unlock 5 minutes of emergency access.
+* **Strict Math Challenge:** Solve 5 consecutive multi-digit multiplication problems in sequence with streak reset penalties.
+* **Smart App Limits Sub-Screen:** Searchable installed apps categorized into active limits vs unconstrained apps with dynamic progress bars.
+
 ---
 
 ## System Architecture
