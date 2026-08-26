@@ -6,6 +6,7 @@
     <!-- Navigation -->
     <string name="nav_timeline">Timeline</string>
     <string name="nav_report">Analytics</string>
+    <string name="nav_data">Data</string>
     <string name="nav_settings">Settings</string>
 
     <!-- Onboarding -->
@@ -357,5 +358,42 @@
     <!-- Widgets -->
     <string name="widget_goal_desc">Compact daily screen time gauge and goal status indicator.</string>
     <string name="widget_timeline_desc">Overview of daily screen time, active app count, and most used application.</string>
+
+    <!-- Data & Network Telemetry Suite -->
+    <string name="data_title">Network Data</string>
+    <string name="data_period_day">Day</string>
+    <string name="data_period_week">Week</string>
+    <string name="data_period_month">Month</string>
+    <string name="data_period_cycle">Billing Cycle</string>
+    <string name="data_filter_all">All Data</string>
+    <string name="data_filter_mobile">Mobile SIM</string>
+    <string name="data_filter_wifi">Wi-Fi</string>
+    <string name="data_filter_hotspot">Hotspot</string>
+    <string name="data_total_bandwidth">Total Bandwidth</string>
+    <string name="data_mobile_used">Mobile Data</string>
+    <string name="data_wifi_used">Wi-Fi Data</string>
+    <string name="data_hotspot_title">Mobile Hotspot &amp; Tethering</string>
+    <string name="data_hotspot_desc">Data transmitted to connected laptops and devices</string>
+    <string name="data_budget_progress">%1$s of %2$s Daily Mobile Quota (%3$d%%)</string>
+    <string name="data_search_hint">Search apps by name…</string>
+    <string name="data_download_rx">Download: %1$s</string>
+    <string name="data_upload_tx">Upload: %1$s</string>
+    <string name="data_permission_title">Usage &amp; Network Access Required</string>
+    <string name="data_permission_desc">Grant Usage Access permission in system settings to monitor Wi-Fi, Mobile Data, and Hotspot traffic accurately.</string>
+    <string name="data_permission_button">Grant Access</string>
+    <string name="data_no_records">No network data consumed in this period.</string>
+    <string name="data_ratio_title">Bandwidth Distribution</string>
+    <string name="data_top_consumer">Top Data Consumer</string>
+
+    <!-- Settings: Data & Network Budgets -->
+    <string name="settings_section_data_budgets">Data &amp; Network Budgets</string>
+    <string name="settings_daily_data_budget">Daily Mobile Data Budget</string>
+    <string name="settings_daily_data_budget_desc">Set target daily mobile carrier limit (e.g. 2.0 GB)</string>
+    <string name="settings_monthly_data_budget">Monthly Data Quota</string>
+    <string name="settings_monthly_data_budget_desc">Set overall billing cycle allowance (e.g. 50 GB)</string>
+    <string name="settings_billing_cycle_day">Billing Cycle Reset Day</string>
+    <string name="settings_billing_cycle_day_desc">Day %1$d of every month</string>
+    <string name="settings_data_alerts">High Data Usage Alerts</string>
+    <string name="settings_data_alerts_desc">Notify when approaching 90% of daily data quota</string>
 </resources>
 

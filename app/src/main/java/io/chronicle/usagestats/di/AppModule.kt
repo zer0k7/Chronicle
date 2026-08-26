@@ -128,6 +128,32 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideNetworkUsageRepository(
+        dataSource: io.chronicle.usagestats.data.datasource.NetworkStatsDataSource,
+        networkDao: io.chronicle.usagestats.data.local.dao.NetworkUsageDao,
+        appOverrideDao: AppOverrideDao
+    ): io.chronicle.usagestats.domain.repository.NetworkUsageRepository {
+        return io.chronicle.usagestats.data.repository.NetworkUsageRepositoryImpl(dataSource, networkDao, appOverrideDao)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGetDataUsageUseCase(
+        repository: io.chronicle.usagestats.domain.repository.NetworkUsageRepository
+    ): io.chronicle.usagestats.domain.usecase.GetDataUsageUseCase {
+        return io.chronicle.usagestats.domain.usecase.GetDataUsageUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
+    fun provideSyncDataUsageUseCase(
+        repository: io.chronicle.usagestats.domain.repository.NetworkUsageRepository
+    ): io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase {
+        return io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase(repository)
+    }
+
+    @Provides
+    @Singleton
     fun provideAppUpdateManager(
         @ApplicationContext context: Context
     ): io.chronicle.usagestats.core.updater.AppUpdateManager {

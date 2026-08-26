@@ -141,6 +141,23 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.updateDataRetentionDays(days) }
     }
 
+    // Network & Data Budgets
+    fun setDailyDataBudgetMb(budgetMb: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateDailyDataBudgetMb(budgetMb) }
+    }
+
+    fun setMonthlyDataBudgetGb(budgetGb: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateMonthlyDataBudgetGb(budgetGb) }
+    }
+
+    fun setBillingCycleStartDay(day: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateBillingCycleStartDay(day) }
+    }
+
+    fun setDataAlertsEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateDataAlertsEnabled(enabled) }
+    }
+
     fun clearUsageData(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {

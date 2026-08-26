@@ -18,6 +18,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import io.chronicle.usagestats.ui.components.ChronicleNavigationRail
 import io.chronicle.usagestats.ui.components.FloatingNavigationBar
+import io.chronicle.usagestats.ui.datausage.DataUsageScreen
 import io.chronicle.usagestats.ui.onboarding.OnboardingScreen
 import io.chronicle.usagestats.ui.report.ReportScreen
 import io.chronicle.usagestats.ui.settings.SettingsScreen
@@ -37,6 +38,7 @@ fun ChronicleNavGraph(
     val showNavBar = currentRoute in listOf(
         Screen.Timeline.route,
         Screen.Report.route,
+        Screen.DataUsage.route,
         Screen.Settings.route
     )
 
@@ -102,6 +104,11 @@ fun ChronicleNavGraph(
                         ReportScreen()
                     }
 
+                    composable(Screen.DataUsage.route) {
+                        currentRoute = Screen.DataUsage.route
+                        DataUsageScreen()
+                    }
+
                     composable(Screen.Settings.route) {
                         currentRoute = Screen.Settings.route
                         SettingsScreen()
@@ -154,6 +161,11 @@ fun ChronicleNavGraph(
                 composable(Screen.Report.route) {
                     currentRoute = Screen.Report.route
                     ReportScreen()
+                }
+
+                composable(Screen.DataUsage.route) {
+                    currentRoute = Screen.DataUsage.route
+                    DataUsageScreen()
                 }
 
                 composable(Screen.Settings.route) {

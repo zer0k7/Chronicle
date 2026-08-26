@@ -81,5 +81,10 @@ data class UserSettings(
     val compactView: Boolean = false,
     val highContrast: Boolean = false,
     // Data Management
-    val dataRetentionDays: Int = -1
+    val dataRetentionDays: Int = -1,
+    // Network & Data Budgets
+    val dailyDataBudgetMb: Int = 2048,
+    val monthlyDataBudgetGb: Int = 50,
+    val billingCycleStartDay: Int = 1,
+    val dataAlertsEnabled: Boolean = true
 )

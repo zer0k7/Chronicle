@@ -34,6 +34,7 @@ import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.SignalCellularAlt
 import androidx.compose.material.icons.outlined.Storage
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.outlined.Tune
@@ -92,6 +93,42 @@ fun SettingsScreen(
     var showWeekendGoalDialog by remember { mutableStateOf(false) }
     var showRetentionDialog by remember { mutableStateOf(false) }
     var showClearDataDialog by remember { mutableStateOf(false) }
+    var showDailyDataBudgetDialog by remember { mutableStateOf(false) }
+    var showMonthlyDataBudgetDialog by remember { mutableStateOf(false) }
+    var showBillingCycleDialog by remember { mutableStateOf(false) }
+
+    if (showDailyDataBudgetDialog) {
+        DailyDataBudgetDialog(
+            initialMb = settings.dailyDataBudgetMb,
+            onDismiss = { showDailyDataBudgetDialog = false },
+            onConfirm = { mb ->
+                viewModel.setDailyDataBudgetMb(mb)
+                showDailyDataBudgetDialog = false
+            }
+        )
+    }
+
+    if (showMonthlyDataBudgetDialog) {
+        MonthlyDataBudgetDialog(
+            initialGb = settings.monthlyDataBudgetGb,
+            onDismiss = { showMonthlyDataBudgetDialog = false },
+            onConfirm = { gb ->
+                viewModel.setMonthlyDataBudgetGb(gb)
+                showMonthlyDataBudgetDialog = false
+            }
+        )
+    }
+
+    if (showBillingCycleDialog) {
+        BillingCycleDayDialog(
+            initialDay = settings.billingCycleStartDay,
+            onDismiss = { showBillingCycleDialog = false },
+            onConfirm = { day ->
+                viewModel.setBillingCycleStartDay(day)
+                showBillingCycleDialog = false
+            }
+        )
+    }
 
     if (showTimePicker) {
         ChronicleTimePickerDialog(
@@ -551,6 +588,52 @@ fun SettingsScreen(
             )
         }
 
+        // --- Data & Network Budgets ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.SignalCellularAlt,
+                title = stringResource(R.string.settings_section_data_budgets)
+            )
+        }
+
+        item {
+            val formattedMb = if (settings.dailyDataBudgetMb >= 1024) {
+                String.format(java.util.Locale.ENGLISH, "%.1f GB", settings.dailyDataBudgetMb / 1024f)
+            } else {
+                "${settings.dailyDataBudgetMb} MB"
+            }
+            SettingsClickRow(
+                title = stringResource(R.string.settings_daily_data_budget),
+                value = formattedMb,
+                onClick = { showDailyDataBudgetDialog = true }
+            )
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_monthly_data_budget),
+                value = "${settings.monthlyDataBudgetGb} GB",
+                onClick = { showMonthlyDataBudgetDialog = true }
+            )
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_billing_cycle_day),
+                value = stringResource(R.string.settings_billing_cycle_day_desc, settings.billingCycleStartDay),
+                onClick = { showBillingCycleDialog = true }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_data_alerts),
+                description = stringResource(R.string.settings_data_alerts_desc),
+                checked = settings.dataAlertsEnabled,
+                onCheckedChange = { viewModel.setDataAlertsEnabled(it) }
+            )
+        }
+
         // --- Permissions Section ---
         item {
             SectionHeader(
@@ -814,4 +897,117 @@ private fun PermissionStatusRow(title: String, isGranted: Boolean, onClick: () -
             color = if (isGranted) ColorSuccess else MaterialTheme.colorScheme.error
         )
     }
+}
+
+@Composable
+private fun DailyDataBudgetDialog(
+    initialMb: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var sliderValue by remember { mutableFloatStateOf(initialMb.toFloat()) }
+    val currentMb = sliderValue.roundToInt()
+
+    ChronicleDialog(
+        title = stringResource(R.string.settings_daily_data_budget),
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(android.R.string.ok),
+        onPrimaryClick = { onConfirm(currentMb) },
+        secondaryButtonText = stringResource(android.R.string.cancel),
+        onSecondaryClick = onDismiss,
+        content = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val formatted = if (currentMb >= 1024) {
+                    String.format(java.util.Locale.ENGLISH, "%.1f GB", currentMb / 1024f)
+                } else {
+                    "$currentMb MB"
+                }
+                Text(
+                    text = formatted,
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 256f..5120f,
+                    steps = 18
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun MonthlyDataBudgetDialog(
+    initialGb: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var sliderValue by remember { mutableFloatStateOf(initialGb.toFloat()) }
+    val currentGb = sliderValue.roundToInt()
+
+    ChronicleDialog(
+        title = stringResource(R.string.settings_monthly_data_budget),
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(android.R.string.ok),
+        onPrimaryClick = { onConfirm(currentGb) },
+        secondaryButtonText = stringResource(android.R.string.cancel),
+        onSecondaryClick = onDismiss,
+        content = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "$currentGb GB",
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 5f..200f,
+                    steps = 38
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun BillingCycleDayDialog(
+    initialDay: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var sliderValue by remember { mutableFloatStateOf(initialDay.toFloat()) }
+    val currentDay = sliderValue.roundToInt().coerceIn(1, 31)
+
+    ChronicleDialog(
+        title = stringResource(R.string.settings_billing_cycle_day),
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(android.R.string.ok),
+        onPrimaryClick = { onConfirm(currentDay) },
+        secondaryButtonText = stringResource(android.R.string.cancel),
+        onSecondaryClick = onDismiss,
+        content = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = "Day $currentDay of every month",
+                    style = MaterialTheme.typography.headlineSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 1f..31f,
+                    steps = 29
+                )
+            }
+        }
+    )
 }

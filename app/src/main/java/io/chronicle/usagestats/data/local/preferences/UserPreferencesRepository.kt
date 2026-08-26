@@ -53,6 +53,11 @@ class UserPreferencesRepository(private val context: Context) {
         val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
         // Data Management
         val DATA_RETENTION_DAYS = intPreferencesKey("data_retention_days")
+        // Network & Data Budgets
+        val DAILY_DATA_BUDGET_MB = intPreferencesKey("daily_data_budget_mb")
+        val MONTHLY_DATA_BUDGET_GB = intPreferencesKey("monthly_data_budget_gb")
+        val BILLING_CYCLE_START_DAY = intPreferencesKey("billing_cycle_start_day")
+        val DATA_ALERTS_ENABLED = booleanPreferencesKey("data_alerts_enabled")
     }
 
     val userSettingsFlow: Flow<UserSettings> = context.dataStore.data
@@ -108,7 +113,12 @@ class UserPreferencesRepository(private val context: Context) {
                 compactView = preferences[PreferencesKeys.COMPACT_VIEW] ?: false,
                 highContrast = preferences[PreferencesKeys.HIGH_CONTRAST] ?: false,
                 // Data Management
-                dataRetentionDays = preferences[PreferencesKeys.DATA_RETENTION_DAYS] ?: -1
+                dataRetentionDays = preferences[PreferencesKeys.DATA_RETENTION_DAYS] ?: -1,
+                // Network & Data Budgets
+                dailyDataBudgetMb = preferences[PreferencesKeys.DAILY_DATA_BUDGET_MB] ?: 2048,
+                monthlyDataBudgetGb = preferences[PreferencesKeys.MONTHLY_DATA_BUDGET_GB] ?: 50,
+                billingCycleStartDay = preferences[PreferencesKeys.BILLING_CYCLE_START_DAY] ?: 1,
+                dataAlertsEnabled = preferences[PreferencesKeys.DATA_ALERTS_ENABLED] ?: true
             )
         }
 
@@ -239,6 +249,31 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateDataRetentionDays(days: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_RETENTION_DAYS] = days
+        }
+    }
+
+    // Network & Data Budgets
+    suspend fun updateDailyDataBudgetMb(budgetMb: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_DATA_BUDGET_MB] = budgetMb
+        }
+    }
+
+    suspend fun updateMonthlyDataBudgetGb(budgetGb: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.MONTHLY_DATA_BUDGET_GB] = budgetGb
+        }
+    }
+
+    suspend fun updateBillingCycleStartDay(day: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.BILLING_CYCLE_START_DAY] = day
+        }
+    }
+
+    suspend fun updateDataAlertsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DATA_ALERTS_ENABLED] = enabled
         }
     }
 }

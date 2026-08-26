@@ -12,6 +12,6 @@ object Constants {
     const val DEFAULT_NOTIFICATION_HOUR = 21 // 9:00 PM IST
     const val DEFAULT_NOTIFICATION_MINUTE = 0
 
-    const val DATABASE_NAME = "chronicle_database.db"
-    const val DATABASE_VERSION = 2
+    const val DATABASE_NAME = "chronicle_db"
+    const val DATABASE_VERSION = 3
 }

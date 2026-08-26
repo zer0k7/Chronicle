@@ -13,7 +13,8 @@ import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
 class DailyUsageSyncWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val syncUsageDataUseCase: SyncUsageDataUseCase
+    private val syncUsageDataUseCase: SyncUsageDataUseCase,
+    private val syncDataUsageUseCase: io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -23,6 +24,7 @@ class DailyUsageSyncWorker @AssistedInject constructor(
 
         return try {
             syncUsageDataUseCase.syncToday()
+            syncDataUsageUseCase.syncDate(System.currentTimeMillis())
             io.chronicle.usagestats.ui.widget.ChronicleGoalWidgetProvider.updateAllWidgets(context)
             io.chronicle.usagestats.ui.widget.ChronicleTimelineWidgetProvider.updateAllWidgets(context)
             Result.success()

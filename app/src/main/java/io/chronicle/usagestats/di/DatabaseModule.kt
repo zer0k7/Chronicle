@@ -40,4 +40,10 @@ object DatabaseModule {
     fun provideAppOverrideDao(database: ChronicleDatabase): AppOverrideDao {
         return database.appOverrideDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideNetworkUsageDao(database: ChronicleDatabase): io.chronicle.usagestats.data.local.dao.NetworkUsageDao {
+        return database.networkUsageDao()
+    }
 }

@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Assessment
+import androidx.compose.material.icons.outlined.DataUsage
 import androidx.compose.material.icons.outlined.DateRange
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -50,6 +51,7 @@ sealed class NavigationItem(
 ) {
     object Timeline : NavigationItem("timeline", R.string.nav_timeline, Icons.Outlined.DateRange)
     object Report : NavigationItem("report", R.string.nav_report, Icons.Outlined.Assessment)
+    object DataUsage : NavigationItem("data_usage", R.string.nav_data, Icons.Outlined.DataUsage)
     object Settings : NavigationItem("settings", R.string.nav_settings, Icons.Outlined.Settings)
 }
 
@@ -62,13 +64,14 @@ fun FloatingNavigationBar(
     val items = listOf(
         NavigationItem.Timeline,
         NavigationItem.Report,
+        NavigationItem.DataUsage,
         NavigationItem.Settings
     )
 
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 24.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 16.dp),
         contentAlignment = Alignment.Center
     ) {
         Surface(
@@ -90,8 +93,8 @@ fun FloatingNavigationBar(
         ) {
             Row(
                 modifier = Modifier
-                    .padding(horizontal = 12.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 for (item in items) {
@@ -131,9 +134,9 @@ fun FloatingNavigationBar(
                                     onNavigate(item.route)
                                 }
                             }
-                            .padding(horizontal = 16.dp, vertical = 10.dp),
+                            .padding(horizontal = if (isSelected) 14.dp else 10.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         Icon(
                             imageVector = item.icon,
@@ -165,6 +168,7 @@ fun ChronicleNavigationRail(
     val items = listOf(
         NavigationItem.Timeline,
         NavigationItem.Report,
+        NavigationItem.DataUsage,
         NavigationItem.Settings
     )
 
