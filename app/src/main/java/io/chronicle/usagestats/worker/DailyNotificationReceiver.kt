@@ -45,7 +45,9 @@ class DailyNotificationReceiver : BroadcastReceiver() {
                     NotificationHelper.showDailySummaryNotification(
                         context = context,
                         summary = summary,
-                        badgeEnabled = settings.badgeEnabled
+                        badgeEnabled = settings.badgeEnabled,
+                        realityCheckEnabled = settings.realityCheckEnabled,
+                        weekendNotificationsMuted = settings.weekendNotificationsMuted
                     )
 
                     // Reschedule for next day

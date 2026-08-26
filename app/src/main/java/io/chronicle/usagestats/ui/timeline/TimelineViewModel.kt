@@ -6,6 +6,7 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
+import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
 import io.chronicle.usagestats.domain.usecase.GetTimelineUsageUseCase
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -14,6 +15,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -21,7 +23,8 @@ import javax.inject.Inject
 @HiltViewModel
 class TimelineViewModel @Inject constructor(
     private val getTimelineUsageUseCase: GetTimelineUsageUseCase,
-    private val syncUsageDataUseCase: SyncUsageDataUseCase
+    private val syncUsageDataUseCase: SyncUsageDataUseCase,
+    private val userPreferencesRepository: UserPreferencesRepository
 ) : ViewModel() {
 
     private val _selectedPeriod = MutableStateFlow(TimelinePeriod.DAY)
@@ -32,6 +35,10 @@ class TimelineViewModel @Inject constructor(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    val dailyGoalMinutes: StateFlow<Int> = userPreferencesRepository.userSettingsFlow
+        .map { it.dailyGoalMinutes }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 150)
 
     val timelineData: StateFlow<TimelineData?> = combine(_selectedPeriod, _referenceDate) { period, date ->
             Pair(period, date)

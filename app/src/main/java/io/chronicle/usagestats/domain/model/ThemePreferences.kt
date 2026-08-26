@@ -58,5 +58,28 @@ data class UserSettings(
     val dailyNotificationHour: Int = 21,
     val dailyNotificationMinute: Int = 0,
     val badgeEnabled: Boolean = true,
-    val isOnboardingCompleted: Boolean = false
+    val isOnboardingCompleted: Boolean = false,
+    // Screen Time Budgets
+    val dailyGoalMinutes: Int = 150,
+    val weekendGoalEnabled: Boolean = false,
+    val weekendGoalMinutes: Int = 240,
+    // Focus Mode
+    val focusModeEnabled: Boolean = false,
+    val focusStartHour: Int = 9,
+    val focusStartMinute: Int = 0,
+    val focusEndHour: Int = 17,
+    val focusEndMinute: Int = 0,
+    // Enhanced Notifications
+    val realityCheckEnabled: Boolean = true,
+    val milestoneNotificationsEnabled: Boolean = true,
+    val weekendNotificationsMuted: Boolean = false,
+    // General
+    val firstDayOfWeek: String = "MONDAY",
+    val dailyResetHour: Int = 0,
+    val showRemovedApps: Boolean = true,
+    // Accessibility
+    val compactView: Boolean = false,
+    val highContrast: Boolean = false,
+    // Data Management
+    val dataRetentionDays: Int = -1
 )

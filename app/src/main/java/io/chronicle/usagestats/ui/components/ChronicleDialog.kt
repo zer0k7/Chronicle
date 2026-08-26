@@ -32,13 +32,14 @@ import androidx.compose.ui.window.DialogProperties
 @Composable
 fun ChronicleDialog(
     title: String,
-    description: String,
+    description: String? = null,
     onDismissRequest: () -> Unit,
     primaryButtonText: String,
     onPrimaryClick: () -> Unit,
     secondaryButtonText: String? = null,
     onSecondaryClick: (() -> Unit)? = null,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    content: @Composable (() -> Unit)? = null
 ) {
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -91,13 +92,20 @@ fun ChronicleDialog(
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
-                Spacer(modifier = Modifier.height(8.dp))
+                if (description != null) {
+                    Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                    Text(
+                        text = description,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+
+                if (content != null) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    content()
+                }
 
                 Spacer(modifier = Modifier.height(24.dp))
 

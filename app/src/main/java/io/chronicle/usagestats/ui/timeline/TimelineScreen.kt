@@ -65,10 +65,9 @@ import io.chronicle.usagestats.domain.model.DailyUsageSummary
 import io.chronicle.usagestats.domain.model.TimelineData
 import io.chronicle.usagestats.domain.model.TimelinePeriod
 import io.chronicle.usagestats.ui.components.AppIconView
-import io.chronicle.usagestats.ui.components.CategoryDistributionBar
 import io.chronicle.usagestats.ui.components.ChronicleCard
 import io.chronicle.usagestats.ui.components.ChronicleDatePickerDialog
-import io.chronicle.usagestats.ui.components.HabitsCard
+import io.chronicle.usagestats.ui.components.GoalProgressRing
 import io.chronicle.usagestats.ui.components.HourlyBarChart
 import io.chronicle.usagestats.ui.theme.ColorRemoved
 import kotlin.math.abs
@@ -82,6 +81,7 @@ fun TimelineScreen(
     val timelineData by viewModel.timelineData.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
     val selectedHour by viewModel.selectedHour.collectAsStateWithLifecycle()
+    val dailyGoalMinutes by viewModel.dailyGoalMinutes.collectAsStateWithLifecycle()
 
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -262,7 +262,10 @@ fun TimelineScreen(
             ) {
                 // 1. Total Screen Time & Trend Comparison Card
                 item {
-                    TimelineSummaryCard(data)
+                    TimelineSummaryCard(
+                        data = data,
+                        dailyGoalMinutes = dailyGoalMinutes
+                    )
                 }
 
                 // 2. Interactive 24-Hour Timeline Bar Chart (Day view only)
@@ -273,34 +276,6 @@ fun TimelineScreen(
                             selectedHour = selectedHour,
                             onHourSelected = { hour -> viewModel.selectHour(hour) }
                         )
-                    }
-                }
-
-                // 3. Category Distribution Bar & Productivity Score
-                val habits = data.habitInsights
-                if (habits != null && habits.categoryBreakdown.isNotEmpty()) {
-                    item {
-                        CategoryDistributionBar(
-                            categoryBreakdown = habits.categoryBreakdown,
-                            productivityScore = habits.productivityScore
-                        )
-                    }
-                }
-
-                // 4. Habits & Sleep Routine Card (Day view only)
-                if (selectedPeriod == TimelinePeriod.DAY && habits != null) {
-                    item {
-                        HabitsCard(insights = habits)
-                    }
-                    if (habits.wakingLifeImpact != null) {
-                        item {
-                            io.chronicle.usagestats.ui.components.WakingLifeCard(insights = habits)
-                        }
-                    }
-                    if (habits.lifeClock != null || habits.dopamineDebt != null || habits.phantomUnlocks != null) {
-                        item {
-                            io.chronicle.usagestats.ui.components.AdvancedPsychologyCard(insights = habits)
-                        }
                     }
                 }
 
@@ -361,7 +336,7 @@ fun TimelineScreen(
 }
 
 @Composable
-private fun TimelineSummaryCard(data: TimelineData) {
+private fun TimelineSummaryCard(data: TimelineData, dailyGoalMinutes: Int) {
     val primaryColor = MaterialTheme.colorScheme.primary
 
     ChronicleCard(modifier = Modifier.fillMaxWidth()) {
@@ -408,7 +383,42 @@ private fun TimelineSummaryCard(data: TimelineData) {
                 fontWeight = FontWeight.Bold,
                 color = primaryColor
             )
+            
             Spacer(modifier = Modifier.height(12.dp))
+            
+            val goalMillis = dailyGoalMinutes * 60 * 1000L
+            val progress = if (goalMillis > 0) {
+                (data.totalDurationMillis.toFloat() / goalMillis.toFloat()).coerceIn(0f, 1f)
+            } else 0f
+            
+            val progressColor = when {
+                progress < 0.60f -> io.chronicle.usagestats.ui.theme.ColorSuccess
+                progress < 0.90f -> MaterialTheme.colorScheme.tertiary
+                else -> MaterialTheme.colorScheme.error
+            }
+            
+            LinearProgressIndicator(
+                progress = { progress },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(8.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+                color = progressColor,
+                trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                strokeCap = StrokeCap.Round
+            )
+            
+            Spacer(modifier = Modifier.height(4.dp))
+            
+            val pct = (progress * 100).toInt()
+            val goalFormatted = DateTimeUtils.formatDuration(goalMillis)
+            Text(
+                text = stringResource(R.string.goal_progress_format, pct, goalFormatted),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            
+            Spacer(modifier = Modifier.height(16.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(24.dp)) {
                 Column {
                     Text(

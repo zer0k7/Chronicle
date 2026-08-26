@@ -11,34 +11,43 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.DoNotDisturb
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.outlined.Palette
 import androidx.compose.material.icons.outlined.Schedule
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Storage
+import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Slider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -49,6 +58,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -59,8 +69,10 @@ import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.core.util.PermissionHelper
 import io.chronicle.usagestats.domain.model.AccentColorPreset
 import io.chronicle.usagestats.domain.model.ThemeMode
+import io.chronicle.usagestats.ui.components.ChronicleDialog
 import io.chronicle.usagestats.ui.components.ChronicleTimePickerDialog
 import io.chronicle.usagestats.ui.theme.ColorSuccess
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -71,7 +83,15 @@ fun SettingsScreen(
     val settings by viewModel.userSettings.collectAsStateWithLifecycle()
     val updateState by viewModel.updateState.collectAsStateWithLifecycle()
     val isUpdateDialogVisible by viewModel.isUpdateDialogVisible.collectAsStateWithLifecycle()
+    
     var showTimePicker by remember { mutableStateOf(false) }
+    var showFocusStartPicker by remember { mutableStateOf(false) }
+    var showFocusEndPicker by remember { mutableStateOf(false) }
+    var showResetTimePicker by remember { mutableStateOf(false) }
+    var showDailyGoalDialog by remember { mutableStateOf(false) }
+    var showWeekendGoalDialog by remember { mutableStateOf(false) }
+    var showRetentionDialog by remember { mutableStateOf(false) }
+    var showClearDataDialog by remember { mutableStateOf(false) }
 
     if (showTimePicker) {
         ChronicleTimePickerDialog(
@@ -82,6 +102,92 @@ fun SettingsScreen(
                 viewModel.setDailyNotificationTime(h, m, context)
                 showTimePicker = false
             }
+        )
+    }
+
+    if (showFocusStartPicker) {
+        ChronicleTimePickerDialog(
+            initialHour = settings.focusStartHour,
+            initialMinute = settings.focusStartMinute,
+            onDismissRequest = { showFocusStartPicker = false },
+            onTimeSelected = { h, m ->
+                viewModel.setFocusSchedule(h, m, settings.focusEndHour, settings.focusEndMinute)
+                showFocusStartPicker = false
+            }
+        )
+    }
+
+    if (showFocusEndPicker) {
+        ChronicleTimePickerDialog(
+            initialHour = settings.focusEndHour,
+            initialMinute = settings.focusEndMinute,
+            onDismissRequest = { showFocusEndPicker = false },
+            onTimeSelected = { h, m ->
+                viewModel.setFocusSchedule(settings.focusStartHour, settings.focusStartMinute, h, m)
+                showFocusEndPicker = false
+            }
+        )
+    }
+
+    if (showResetTimePicker) {
+        ChronicleTimePickerDialog(
+            initialHour = settings.dailyResetHour,
+            initialMinute = 0,
+            onDismissRequest = { showResetTimePicker = false },
+            onTimeSelected = { h, _ ->
+                viewModel.setDailyResetHour(h)
+                showResetTimePicker = false
+            }
+        )
+    }
+
+    if (showDailyGoalDialog) {
+        DailyGoalDialog(
+            title = stringResource(R.string.settings_daily_goal),
+            initialMinutes = settings.dailyGoalMinutes,
+            onDismiss = { showDailyGoalDialog = false },
+            onConfirm = { mins ->
+                viewModel.setDailyGoalMinutes(mins)
+                showDailyGoalDialog = false
+            }
+        )
+    }
+
+    if (showWeekendGoalDialog) {
+        DailyGoalDialog(
+            title = stringResource(R.string.settings_weekend_goal),
+            initialMinutes = settings.weekendGoalMinutes,
+            onDismiss = { showWeekendGoalDialog = false },
+            onConfirm = { mins ->
+                viewModel.setWeekendGoalMinutes(mins)
+                showWeekendGoalDialog = false
+            }
+        )
+    }
+
+    if (showRetentionDialog) {
+        RetentionPeriodDialog(
+            currentDays = settings.dataRetentionDays,
+            onDismiss = { showRetentionDialog = false },
+            onConfirm = { days ->
+                viewModel.setDataRetentionDays(days)
+                showRetentionDialog = false
+            }
+        )
+    }
+
+    if (showClearDataDialog) {
+        ChronicleDialog(
+            title = stringResource(R.string.settings_clear_data),
+            description = stringResource(R.string.settings_clear_data_desc),
+            onDismissRequest = { showClearDataDialog = false },
+            primaryButtonText = stringResource(android.R.string.ok),
+            onPrimaryClick = {
+                viewModel.clearUsageData(context)
+                showClearDataDialog = false
+            },
+            secondaryButtonText = stringResource(android.R.string.cancel),
+            onSecondaryClick = { showClearDataDialog = false }
         )
     }
 
@@ -111,7 +217,6 @@ fun SettingsScreen(
             )
         }
 
-        // Theme Mode
         item {
             SettingsLabel(stringResource(R.string.settings_theme_label))
             Row(
@@ -158,7 +263,6 @@ fun SettingsScreen(
             }
         }
 
-        // Accent Color
         item {
             Spacer(Modifier.height(16.dp))
             SettingsLabel(stringResource(R.string.settings_accent_label))
@@ -192,6 +296,70 @@ fun SettingsScreen(
             }
         }
 
+        // --- Screen Time Budgets ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.Timer,
+                title = stringResource(R.string.settings_daily_goal)
+            )
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_daily_goal),
+                value = formatMinutesToHoursMins(settings.dailyGoalMinutes),
+                onClick = { showDailyGoalDialog = true }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_weekend_override),
+                description = stringResource(R.string.settings_weekend_override_desc),
+                checked = settings.weekendGoalEnabled,
+                onCheckedChange = { viewModel.setWeekendGoalEnabled(it) }
+            )
+        }
+
+        if (settings.weekendGoalEnabled) {
+            item {
+                SettingsClickRow(
+                    title = stringResource(R.string.settings_weekend_goal),
+                    value = formatMinutesToHoursMins(settings.weekendGoalMinutes),
+                    onClick = { showWeekendGoalDialog = true }
+                )
+            }
+        }
+
+        // --- Focus Mode ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.DoNotDisturb,
+                title = stringResource(R.string.settings_focus_mode_toggle)
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_focus_mode_toggle),
+                description = stringResource(R.string.settings_focus_mode_desc),
+                checked = settings.focusModeEnabled,
+                onCheckedChange = { viewModel.setFocusModeEnabled(it) }
+            )
+        }
+
+        if (settings.focusModeEnabled) {
+            item {
+                val start = DateTimeUtils.formatTime(settings.focusStartHour, settings.focusStartMinute)
+                val end = DateTimeUtils.formatTime(settings.focusEndHour, settings.focusEndMinute)
+                SettingsClickRow(
+                    title = stringResource(R.string.settings_focus_schedule),
+                    value = "$start to $end",
+                    onClick = { showFocusStartPicker = true }
+                )
+            }
+        }
+
         // --- Notifications Section ---
         item {
             SectionHeader(
@@ -200,7 +368,6 @@ fun SettingsScreen(
             )
         }
 
-        // Daily Summary Toggle
         item {
             SettingsToggleRow(
                 title = stringResource(R.string.settings_notification_daily_summary),
@@ -210,7 +377,6 @@ fun SettingsScreen(
             )
         }
 
-        // Notification Time
         item {
             SettingsClickRow(
                 title = stringResource(R.string.settings_notification_time),
@@ -219,13 +385,169 @@ fun SettingsScreen(
             )
         }
 
-        // Badge Toggle
         item {
             SettingsToggleRow(
                 title = stringResource(R.string.settings_notification_badge),
                 description = stringResource(R.string.settings_notification_badge_desc),
                 checked = settings.badgeEnabled,
                 onCheckedChange = { viewModel.setBadgeEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_reality_check),
+                description = stringResource(R.string.settings_reality_check_desc),
+                checked = settings.realityCheckEnabled,
+                onCheckedChange = { viewModel.setRealityCheckEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_milestone_notifications),
+                description = stringResource(R.string.settings_milestone_notifications_desc),
+                checked = settings.milestoneNotificationsEnabled,
+                onCheckedChange = { viewModel.setMilestoneNotificationsEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_weekend_mute),
+                description = stringResource(R.string.settings_weekend_mute_desc),
+                checked = settings.weekendNotificationsMuted,
+                onCheckedChange = { viewModel.setWeekendNotificationsMuted(it) }
+            )
+        }
+
+        // --- General ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.Tune,
+                title = stringResource(R.string.settings_first_day_of_week)
+            )
+        }
+
+        item {
+            SettingsLabel(stringResource(R.string.settings_first_day_of_week))
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val days = listOf("SUNDAY" to "Sunday", "MONDAY" to "Monday")
+                days.forEach { (value, label) ->
+                    val isSelected = value == settings.firstDayOfWeek
+                    Surface(
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .border(
+                                width = if (isSelected) 2.dp else 1.dp,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                shape = RoundedCornerShape(12.dp)
+                            )
+                            .clickable { viewModel.setFirstDayOfWeek(value) },
+                        color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                        else MaterialTheme.colorScheme.surfaceVariant,
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_daily_reset_time),
+                value = DateTimeUtils.formatTime(settings.dailyResetHour, 0),
+                onClick = { showResetTimePicker = true }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_show_removed_apps),
+                description = stringResource(R.string.settings_show_removed_apps_desc),
+                checked = settings.showRemovedApps,
+                onCheckedChange = { viewModel.setShowRemovedApps(it) }
+            )
+        }
+
+        // --- Data Management ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.Storage,
+                title = stringResource(R.string.settings_export_csv)
+            )
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_export_csv),
+                value = "CSV",
+                onClick = { viewModel.exportCsvData(context) }
+            )
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.settings_clear_data),
+                value = "",
+                onClick = { showClearDataDialog = true }
+            )
+        }
+
+        item {
+            val periodStr = when (settings.dataRetentionDays) {
+                30 -> "30 Days"
+                90 -> "90 Days"
+                365 -> "1 Year"
+                else -> "Forever"
+            }
+            SettingsClickRow(
+                title = stringResource(R.string.settings_retention_period),
+                value = periodStr,
+                onClick = { showRetentionDialog = true }
+            )
+        }
+
+        // --- Accessibility ---
+        item {
+            SectionHeader(
+                icon = Icons.Outlined.Accessibility,
+                title = stringResource(R.string.settings_compact_view)
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_compact_view),
+                description = stringResource(R.string.settings_compact_view_desc),
+                checked = settings.compactView,
+                onCheckedChange = { viewModel.setCompactView(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_high_contrast),
+                description = stringResource(R.string.settings_high_contrast_desc),
+                checked = settings.highContrast,
+                onCheckedChange = { viewModel.setHighContrast(it) }
             )
         }
 
@@ -292,6 +614,106 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+private fun formatMinutesToHoursMins(minutes: Int): String {
+    val h = minutes / 60
+    val m = minutes % 60
+    return buildString {
+        if (h > 0) append("${h}h ")
+        append("${m}m")
+    }.trim()
+}
+
+@Composable
+private fun DailyGoalDialog(
+    title: String,
+    initialMinutes: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var sliderValue by remember { mutableFloatStateOf(initialMinutes.toFloat()) }
+    val currentMinutes = sliderValue.roundToInt()
+
+    ChronicleDialog(
+        title = title,
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(android.R.string.ok),
+        onPrimaryClick = { onConfirm(currentMinutes) },
+        secondaryButtonText = stringResource(android.R.string.cancel),
+        onSecondaryClick = onDismiss,
+        content = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text(
+                    text = formatMinutesToHoursMins(currentMinutes),
+                    style = MaterialTheme.typography.headlineMedium,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Slider(
+                    value = sliderValue,
+                    onValueChange = { sliderValue = it },
+                    valueRange = 30f..480f,
+                    steps = 29
+                )
+            }
+        }
+    )
+}
+
+@Composable
+private fun RetentionPeriodDialog(
+    currentDays: Int,
+    onDismiss: () -> Unit,
+    onConfirm: (Int) -> Unit
+) {
+    var selectedDays by remember { mutableStateOf(currentDays) }
+    
+    val options = listOf(
+        -1 to "Forever",
+        30 to "30 Days",
+        90 to "90 Days",
+        365 to "1 Year"
+    )
+
+    ChronicleDialog(
+        title = stringResource(R.string.settings_retention_period),
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(android.R.string.ok),
+        onPrimaryClick = { onConfirm(selectedDays) },
+        secondaryButtonText = stringResource(android.R.string.cancel),
+        onSecondaryClick = onDismiss,
+        content = {
+            Column(Modifier.selectableGroup()) {
+                options.forEach { (days, label) ->
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .height(48.dp)
+                            .selectable(
+                                selected = (days == selectedDays),
+                                onClick = { selectedDays = days },
+                                role = Role.RadioButton
+                            )
+                            .padding(horizontal = 16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        RadioButton(
+                            selected = (days == selectedDays),
+                            onClick = null
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Text(
+                            text = label,
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+            }
+        }
+    )
 }
 
 @Composable

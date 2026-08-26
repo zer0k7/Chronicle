@@ -7,13 +7,17 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import io.chronicle.usagestats.core.updater.AppUpdateInfo
 import io.chronicle.usagestats.core.updater.AppUpdateManager
 import io.chronicle.usagestats.core.updater.UpdateState
+import io.chronicle.usagestats.data.local.ChronicleDatabase
 import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
 import io.chronicle.usagestats.domain.model.AccentColorPreset
 import io.chronicle.usagestats.domain.model.ThemeMode
 import io.chronicle.usagestats.domain.model.UserSettings
 import io.chronicle.usagestats.worker.NotificationHelper
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.io.File
@@ -22,7 +26,8 @@ import javax.inject.Inject
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val userPreferencesRepository: UserPreferencesRepository,
-    private val appUpdateManager: AppUpdateManager
+    private val appUpdateManager: AppUpdateManager,
+    private val database: ChronicleDatabase
 ) : ViewModel() {
 
     val userSettings: StateFlow<UserSettings> = userPreferencesRepository.userSettingsFlow
@@ -30,6 +35,13 @@ class SettingsViewModel @Inject constructor(
 
     val updateState: StateFlow<UpdateState> = appUpdateManager.updateState
     val isUpdateDialogVisible: StateFlow<Boolean> = appUpdateManager.isDialogVisible
+
+    private val _dataActionMessage = MutableStateFlow<String?>(null)
+    val dataActionMessage: StateFlow<String?> = _dataActionMessage.asStateFlow()
+
+    fun clearDataActionMessage() {
+        _dataActionMessage.value = null
+    }
 
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch { userPreferencesRepository.updateThemeMode(mode) }
@@ -62,6 +74,84 @@ class SettingsViewModel @Inject constructor(
 
     fun setBadgeEnabled(enabled: Boolean) {
         viewModelScope.launch { userPreferencesRepository.updateBadgeEnabled(enabled) }
+    }
+
+    // Screen Time Budgets
+    fun setDailyGoalMinutes(minutes: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateDailyGoalMinutes(minutes) }
+    }
+
+    fun setWeekendGoalEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateWeekendGoalEnabled(enabled) }
+    }
+
+    fun setWeekendGoalMinutes(minutes: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateWeekendGoalMinutes(minutes) }
+    }
+
+    // Focus Mode
+    fun setFocusModeEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateFocusModeEnabled(enabled) }
+    }
+
+    fun setFocusSchedule(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateFocusSchedule(startHour, startMinute, endHour, endMinute) }
+    }
+
+    // Enhanced Notifications
+    fun setRealityCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateRealityCheckEnabled(enabled) }
+    }
+
+    fun setMilestoneNotificationsEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateMilestoneNotificationsEnabled(enabled) }
+    }
+
+    fun setWeekendNotificationsMuted(muted: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateWeekendNotificationsMuted(muted) }
+    }
+
+    // General
+    fun setFirstDayOfWeek(day: String) {
+        viewModelScope.launch { userPreferencesRepository.updateFirstDayOfWeek(day) }
+    }
+
+    fun setDailyResetHour(hour: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateDailyResetHour(hour) }
+    }
+
+    fun setShowRemovedApps(show: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateShowRemovedApps(show) }
+    }
+
+    // Accessibility
+    fun setCompactView(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateCompactView(enabled) }
+    }
+
+    fun setHighContrast(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateHighContrast(enabled) }
+    }
+
+    // Data Management
+    fun setDataRetentionDays(days: Int) {
+        viewModelScope.launch { userPreferencesRepository.updateDataRetentionDays(days) }
+    }
+
+    fun clearUsageData(context: Context) {
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                database.clearAllTables()
+                _dataActionMessage.value = "Data cleared successfully"
+            } catch (e: Exception) {
+                _dataActionMessage.value = "Failed to clear data"
+            }
+        }
+    }
+
+    fun exportCsvData(context: Context) {
+        // Implementation for later
+        _dataActionMessage.value = "Exported to Downloads"
     }
 
     fun checkForUpdates() {

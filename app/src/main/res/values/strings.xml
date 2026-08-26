@@ -253,4 +253,81 @@
     <string name="export_start_date">Start Date</string>
     <string name="export_end_date">End Date</string>
     <string name="export_generate_button">Generate &amp; Share</string>
+
+    <!-- Analytics Section Headers -->
+    <string name="section_usage_breakdown">Usage Breakdown</string>
+    <string name="section_habits_routine">Habits and Routine</string>
+    <string name="section_screen_life_impact">Screen Life Impact</string>
+    <string name="section_psychological_metrics">Psychological Metrics</string>
+    <string name="section_app_comparison">App Comparison</string>
+    <string name="section_all_apps">All Apps</string>
+
+    <!-- Daily Goal Progress -->
+    <string name="goal_progress_label">Daily Goal</string>
+    <string name="goal_progress_format">%1$d%% of %2$s goal</string>
+    <string name="goal_under_target">Under target</string>
+    <string name="goal_approaching">Approaching limit</string>
+    <string name="goal_exceeded">Goal exceeded</string>
+
+    <!-- Settings: Screen Time Budgets -->
+    <string name="settings_section_budgets">Screen Time Budgets</string>
+    <string name="settings_daily_goal">Daily Screen Time Goal</string>
+    <string name="settings_daily_goal_desc">Set a target daily screen time to stay mindful of your usage.</string>
+    <string name="settings_daily_goal_value">%1$dh %2$dm</string>
+    <string name="settings_weekend_override">Weekend Override</string>
+    <string name="settings_weekend_override_desc">Allow a different screen time limit on Saturday and Sunday.</string>
+    <string name="settings_weekend_goal">Weekend Goal</string>
+
+    <!-- Settings: Focus Mode -->
+    <string name="settings_section_focus">Focus Mode</string>
+    <string name="settings_focus_mode_toggle">Focus Mode</string>
+    <string name="settings_focus_mode_desc">Receive reminders when using distracting apps during focus hours.</string>
+    <string name="settings_focus_schedule">Focus Schedule</string>
+    <string name="settings_focus_schedule_desc">Set your focused work hours for weekdays.</string>
+    <string name="settings_focus_schedule_value">%1$s to %2$s</string>
+
+    <!-- Settings: Enhanced Notifications -->
+    <string name="settings_reality_check">Reality Check Alerts</string>
+    <string name="settings_reality_check_desc">Context-aware alerts for excessive gaming, social media, and low productivity.</string>
+    <string name="settings_milestone_notifications">Milestone Notifications</string>
+    <string name="settings_milestone_notifications_desc">Celebrate when you hit positive usage milestones.</string>
+    <string name="settings_weekend_mute">Weekend Quiet Mode</string>
+    <string name="settings_weekend_mute_desc">Silence all Chronicle notifications on Saturday and Sunday.</string>
+
+    <!-- Settings: Data Management -->
+    <string name="settings_section_data">Data Management</string>
+    <string name="settings_export_csv">Export Usage Data</string>
+    <string name="settings_export_csv_desc">Export your complete usage history as a CSV file.</string>
+    <string name="settings_clear_data">Clear Usage Cache</string>
+    <string name="settings_clear_data_desc">Remove all locally cached usage data. This cannot be undone.</string>
+    <string name="settings_clear_data_confirm_title">Clear All Data</string>
+    <string name="settings_clear_data_confirm_body">This will permanently delete all cached usage statistics from Chronicle. Raw system usage data remains available from the Android system.\n\nThis action cannot be undone.</string>
+    <string name="settings_clear_data_confirm_button">Clear Data</string>
+    <string name="settings_data_cleared">Usage cache cleared successfully.</string>
+    <string name="settings_retention_period">Data Retention Period</string>
+    <string name="settings_retention_period_desc">How long to keep historical usage data locally.</string>
+    <string name="settings_retention_forever">Forever</string>
+    <string name="settings_retention_30d">30 Days</string>
+    <string name="settings_retention_90d">90 Days</string>
+    <string name="settings_retention_1y">1 Year</string>
+    <string name="settings_csv_exported">Usage data exported successfully.</string>
+    <string name="settings_csv_failed">Failed to export data. Please check storage permissions.</string>
+
+    <!-- Settings: General -->
+    <string name="settings_section_general">General</string>
+    <string name="settings_first_day_of_week">First Day of Week</string>
+    <string name="settings_first_day_monday">Monday</string>
+    <string name="settings_first_day_sunday">Sunday</string>
+    <string name="settings_daily_reset_time">Daily Reset Time</string>
+    <string name="settings_daily_reset_time_desc">The hour when your daily usage counter resets. Default is midnight (00:00 IST).</string>
+    <string name="settings_show_removed_apps">Show Removed Apps</string>
+    <string name="settings_show_removed_apps_desc">Include uninstalled apps and their historical data in all views.</string>
+
+    <!-- Settings: Accessibility -->
+    <string name="settings_section_accessibility">Accessibility</string>
+    <string name="settings_compact_view">Compact View</string>
+    <string name="settings_compact_view_desc">Reduce card spacing and font sizes for higher information density.</string>
+    <string name="settings_high_contrast">High Contrast</string>
+    <string name="settings_high_contrast_desc">Enhance text contrast for improved readability in light themes.</string>
 </resources>
+

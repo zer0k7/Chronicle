@@ -30,6 +30,29 @@ class UserPreferencesRepository(private val context: Context) {
         val DAILY_NOTIFICATION_MINUTE = intPreferencesKey("daily_notification_minute")
         val BADGE_ENABLED = booleanPreferencesKey("badge_enabled")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        // Screen Time Budgets
+        val DAILY_GOAL_MINUTES = intPreferencesKey("daily_screen_time_goal_minutes")
+        val WEEKEND_GOAL_ENABLED = booleanPreferencesKey("weekend_goal_enabled")
+        val WEEKEND_GOAL_MINUTES = intPreferencesKey("weekend_goal_minutes")
+        // Focus Mode
+        val FOCUS_MODE_ENABLED = booleanPreferencesKey("focus_mode_enabled")
+        val FOCUS_START_HOUR = intPreferencesKey("focus_start_hour")
+        val FOCUS_START_MINUTE = intPreferencesKey("focus_start_minute")
+        val FOCUS_END_HOUR = intPreferencesKey("focus_end_hour")
+        val FOCUS_END_MINUTE = intPreferencesKey("focus_end_minute")
+        // Enhanced Notifications
+        val REALITY_CHECK_ENABLED = booleanPreferencesKey("reality_check_enabled")
+        val MILESTONE_NOTIFICATIONS_ENABLED = booleanPreferencesKey("milestone_notifications_enabled")
+        val WEEKEND_NOTIFICATIONS_MUTED = booleanPreferencesKey("weekend_notifications_muted")
+        // General
+        val FIRST_DAY_OF_WEEK = stringPreferencesKey("first_day_of_week")
+        val DAILY_RESET_HOUR = intPreferencesKey("daily_reset_hour")
+        val SHOW_REMOVED_APPS = booleanPreferencesKey("show_removed_apps")
+        // Accessibility
+        val COMPACT_VIEW = booleanPreferencesKey("compact_view")
+        val HIGH_CONTRAST = booleanPreferencesKey("high_contrast")
+        // Data Management
+        val DATA_RETENTION_DAYS = intPreferencesKey("data_retention_days")
     }
 
     val userSettingsFlow: Flow<UserSettings> = context.dataStore.data
@@ -62,7 +85,30 @@ class UserPreferencesRepository(private val context: Context) {
                 dailyNotificationHour = preferences[PreferencesKeys.DAILY_NOTIFICATION_HOUR] ?: Constants.DEFAULT_NOTIFICATION_HOUR,
                 dailyNotificationMinute = preferences[PreferencesKeys.DAILY_NOTIFICATION_MINUTE] ?: Constants.DEFAULT_NOTIFICATION_MINUTE,
                 badgeEnabled = preferences[PreferencesKeys.BADGE_ENABLED] ?: true,
-                isOnboardingCompleted = preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
+                isOnboardingCompleted = preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false,
+                // Screen Time Budgets
+                dailyGoalMinutes = preferences[PreferencesKeys.DAILY_GOAL_MINUTES] ?: 150,
+                weekendGoalEnabled = preferences[PreferencesKeys.WEEKEND_GOAL_ENABLED] ?: false,
+                weekendGoalMinutes = preferences[PreferencesKeys.WEEKEND_GOAL_MINUTES] ?: 240,
+                // Focus Mode
+                focusModeEnabled = preferences[PreferencesKeys.FOCUS_MODE_ENABLED] ?: false,
+                focusStartHour = preferences[PreferencesKeys.FOCUS_START_HOUR] ?: 9,
+                focusStartMinute = preferences[PreferencesKeys.FOCUS_START_MINUTE] ?: 0,
+                focusEndHour = preferences[PreferencesKeys.FOCUS_END_HOUR] ?: 17,
+                focusEndMinute = preferences[PreferencesKeys.FOCUS_END_MINUTE] ?: 0,
+                // Enhanced Notifications
+                realityCheckEnabled = preferences[PreferencesKeys.REALITY_CHECK_ENABLED] ?: true,
+                milestoneNotificationsEnabled = preferences[PreferencesKeys.MILESTONE_NOTIFICATIONS_ENABLED] ?: true,
+                weekendNotificationsMuted = preferences[PreferencesKeys.WEEKEND_NOTIFICATIONS_MUTED] ?: false,
+                // General
+                firstDayOfWeek = preferences[PreferencesKeys.FIRST_DAY_OF_WEEK] ?: "MONDAY",
+                dailyResetHour = preferences[PreferencesKeys.DAILY_RESET_HOUR] ?: 0,
+                showRemovedApps = preferences[PreferencesKeys.SHOW_REMOVED_APPS] ?: true,
+                // Accessibility
+                compactView = preferences[PreferencesKeys.COMPACT_VIEW] ?: false,
+                highContrast = preferences[PreferencesKeys.HIGH_CONTRAST] ?: false,
+                // Data Management
+                dataRetentionDays = preferences[PreferencesKeys.DATA_RETENTION_DAYS] ?: -1
             )
         }
 
@@ -100,6 +146,99 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun setOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] = completed
+        }
+    }
+
+    // Screen Time Budgets
+    suspend fun updateDailyGoalMinutes(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_GOAL_MINUTES] = minutes
+        }
+    }
+
+    suspend fun updateWeekendGoalEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEEKEND_GOAL_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateWeekendGoalMinutes(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEEKEND_GOAL_MINUTES] = minutes
+        }
+    }
+
+    // Focus Mode
+    suspend fun updateFocusModeEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOCUS_MODE_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateFocusSchedule(startHour: Int, startMinute: Int, endHour: Int, endMinute: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FOCUS_START_HOUR] = startHour
+            preferences[PreferencesKeys.FOCUS_START_MINUTE] = startMinute
+            preferences[PreferencesKeys.FOCUS_END_HOUR] = endHour
+            preferences[PreferencesKeys.FOCUS_END_MINUTE] = endMinute
+        }
+    }
+
+    // Enhanced Notifications
+    suspend fun updateRealityCheckEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.REALITY_CHECK_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateMilestoneNotificationsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.MILESTONE_NOTIFICATIONS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateWeekendNotificationsMuted(muted: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.WEEKEND_NOTIFICATIONS_MUTED] = muted
+        }
+    }
+
+    // General
+    suspend fun updateFirstDayOfWeek(day: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.FIRST_DAY_OF_WEEK] = day
+        }
+    }
+
+    suspend fun updateDailyResetHour(hour: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DAILY_RESET_HOUR] = hour
+        }
+    }
+
+    suspend fun updateShowRemovedApps(show: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.SHOW_REMOVED_APPS] = show
+        }
+    }
+
+    // Accessibility
+    suspend fun updateCompactView(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.COMPACT_VIEW] = enabled
+        }
+    }
+
+    suspend fun updateHighContrast(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.HIGH_CONTRAST] = enabled
+        }
+    }
+
+    // Data Management
+    suspend fun updateDataRetentionDays(days: Int) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DATA_RETENTION_DAYS] = days
         }
     }
 }

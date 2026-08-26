@@ -391,6 +391,7 @@ fun ReportScreen(
                     // Category Distribution Bar & Productivity Score
                     val habits = data.habitInsights
                     if (habits != null && habits.categoryBreakdown.isNotEmpty()) {
+                        item { AnalyticsSectionHeader(title = stringResource(R.string.section_usage_breakdown)) }
                         item {
                             io.chronicle.usagestats.ui.components.CategoryDistributionBar(
                                 categoryBreakdown = habits.categoryBreakdown,
@@ -401,40 +402,36 @@ fun ReportScreen(
 
                     // Habits & Routine Card
                     if (habits != null) {
+                        item { AnalyticsSectionHeader(title = stringResource(R.string.section_habits_routine)) }
                         item {
                             io.chronicle.usagestats.ui.components.HabitsCard(insights = habits)
                         }
                         if (habits.wakingLifeImpact != null) {
+                            item { AnalyticsSectionHeader(title = stringResource(R.string.section_screen_life_impact)) }
                             item {
                                 io.chronicle.usagestats.ui.components.WakingLifeCard(insights = habits)
                             }
                         }
                     }
 
-                    // App vs App Comparison Card
-                    if (data.apps.size >= 2) {
-                        item {
-                            io.chronicle.usagestats.ui.components.AppComparisonCard(apps = data.apps)
-                        }
-                    }
-
                     // Advanced Psychological Habit Metrics Card
                     if (habits != null) {
+                        item { AnalyticsSectionHeader(title = stringResource(R.string.section_psychological_metrics)) }
                         item {
                             io.chronicle.usagestats.ui.components.AdvancedPsychologyCard(insights = habits)
                         }
                     }
 
-                    // App List Header
-                    item {
-                        Text(
-                            text = stringResource(R.string.timeline_most_used),
-                            style = MaterialTheme.typography.titleLarge,
-                            fontWeight = FontWeight.SemiBold,
-                            color = MaterialTheme.colorScheme.onBackground,
-                            modifier = Modifier.padding(top = 4.dp)
-                        )
+                    // App vs App Comparison Card
+                    if (data.apps.size >= 2) {
+                        item { AnalyticsSectionHeader(title = stringResource(R.string.section_app_comparison)) }
+                        item {
+                            io.chronicle.usagestats.ui.components.AppComparisonCard(apps = data.apps)
+                        }
                     }
+
+                    // App List Header
+                    item { AnalyticsSectionHeader(title = stringResource(R.string.section_all_apps)) }
 
                     // App Rows
                     items(data.apps) { app ->
@@ -569,4 +566,16 @@ private fun ReportAppRow(app: AppUsageInfo, totalDuration: Long) {
             )
         }
     }
+}
+
+@Composable
+private fun AnalyticsSectionHeader(title: String) {
+    Text(
+        text = title.uppercase(),
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+        letterSpacing = MaterialTheme.typography.labelMedium.letterSpacing,
+        modifier = Modifier.padding(top = 8.dp, bottom = 4.dp)
+    )
 }

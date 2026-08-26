@@ -34,10 +34,20 @@ object NotificationHelper {
     fun showDailySummaryNotification(
         context: Context,
         summary: io.chronicle.usagestats.domain.model.DailyUsageSummary,
-        badgeEnabled: Boolean = true
+        badgeEnabled: Boolean = true,
+        realityCheckEnabled: Boolean = true,
+        weekendNotificationsMuted: Boolean = false
     ) {
         if (!PermissionHelper.hasNotificationPermission(context)) {
             return
+        }
+
+        // Check weekend quiet mode (Saturday / Sunday in IST)
+        if (weekendNotificationsMuted) {
+            val dayOfWeek = DateTimeUtils.nowInIst().dayOfWeek
+            if (dayOfWeek == java.time.DayOfWeek.SATURDAY || dayOfWeek == java.time.DayOfWeek.SUNDAY) {
+                return
+            }
         }
 
         val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -65,44 +75,40 @@ object NotificationHelper {
         val durationFormatted = DateTimeUtils.formatDuration(totalDurationMillis)
 
         val (title, body) = when {
-            // Rule 1: Heavy Gaming (> 1h 30m in games)
-            gamingDuration >= 90 * 60 * 1000L -> {
+            // Reality check alerts (only if enabled)
+            realityCheckEnabled && gamingDuration >= 90 * 60 * 1000L -> {
                 val gameDurationStr = DateTimeUtils.formatDuration(gamingDuration)
                 Pair(
                     context.getString(R.string.notification_gaming_title, gameDurationStr),
                     context.getString(R.string.notification_gaming_body, gameDurationStr, topApp)
                 )
             }
-            // Rule 2: Heavy Social Media Doomscrolling (> 1h 30m in social)
-            socialDuration >= 90 * 60 * 1000L -> {
+            realityCheckEnabled && socialDuration >= 90 * 60 * 1000L -> {
                 val socialDurationStr = DateTimeUtils.formatDuration(socialDuration)
                 Pair(
                     context.getString(R.string.notification_social_title, socialDurationStr),
                     context.getString(R.string.notification_social_body, socialDurationStr)
                 )
             }
-            // Rule 3: High Screen Time (> 4.5h) and Low Productivity (< 30%)
-            totalDurationMillis >= 270 * 60 * 1000L && productivityScore < 30 -> {
+            realityCheckEnabled && totalDurationMillis >= 270 * 60 * 1000L && productivityScore < 30 -> {
                 Pair(
                     context.getString(R.string.notification_productivity_title, productivityScore),
                     context.getString(R.string.notification_productivity_body, productivityScore, durationFormatted)
                 )
             }
-            // Rule 4: High Productivity (> 65% productivity and at least 1h total)
-            productivityScore >= 65 && totalDurationMillis >= 60 * 60 * 1000L -> {
+            realityCheckEnabled && productivityScore >= 65 && totalDurationMillis >= 60 * 60 * 1000L -> {
                 Pair(
                     context.getString(R.string.notification_discipline_title, productivityScore),
                     context.getString(R.string.notification_discipline_body, durationFormatted)
                 )
             }
-            // Rule 5: Late Night Bedtime Screen Time (> 45m before sleep)
-            bedtimeUsage >= 45 * 60 * 1000L -> {
+            realityCheckEnabled && bedtimeUsage >= 45 * 60 * 1000L -> {
                 Pair(
                     context.getString(R.string.notification_sleep_title),
                     context.getString(R.string.notification_sleep_body)
                 )
             }
-            // Rule 6: Standard Balanced Overview
+            // Standard Balanced Overview
             else -> {
                 Pair(
                     context.getString(R.string.notification_daily_title, durationFormatted),
