@@ -26,19 +26,26 @@ class ChronicleApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
-        NotificationHelper.createNotificationChannel(this)
-        schedulePeriodicUsageSync()
+        try {
+            NotificationHelper.createNotificationChannel(this)
+        } catch (_: Exception) { }
+
+        try {
+            schedulePeriodicUsageSync()
+        } catch (_: Exception) { }
     }
 
     private fun schedulePeriodicUsageSync() {
-        val syncRequest = PeriodicWorkRequestBuilder<DailyUsageSyncWorker>(
-            1, TimeUnit.HOURS
-        ).build()
+        try {
+            val syncRequest = PeriodicWorkRequestBuilder<DailyUsageSyncWorker>(
+                1, TimeUnit.HOURS
+            ).build()
 
-        WorkManager.getInstance(this).enqueueUniquePeriodicWork(
-            Constants.WORKER_SYNC_TAG,
-            ExistingPeriodicWorkPolicy.KEEP,
-            syncRequest
-        )
+            WorkManager.getInstance(this).enqueueUniquePeriodicWork(
+                Constants.WORKER_SYNC_TAG,
+                ExistingPeriodicWorkPolicy.KEEP,
+                syncRequest
+            )
+        } catch (_: Exception) { }
     }
 }

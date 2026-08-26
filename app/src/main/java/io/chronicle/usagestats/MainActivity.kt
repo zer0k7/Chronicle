@@ -13,6 +13,9 @@ import androidx.navigation.compose.rememberNavController
 import dagger.hilt.android.AndroidEntryPoint
 import io.chronicle.usagestats.core.updater.AppUpdateManager
 import io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository
+import io.chronicle.usagestats.domain.model.AccentColorPreset
+import io.chronicle.usagestats.domain.model.ThemeMode
+import io.chronicle.usagestats.domain.model.UserSettings
 import io.chronicle.usagestats.ui.components.UpdateDialog
 import io.chronicle.usagestats.ui.navigation.ChronicleNavGraph
 import io.chronicle.usagestats.ui.theme.ChronicleTheme
@@ -34,8 +37,10 @@ class MainActivity : ComponentActivity() {
 
         enableEdgeToEdge()
 
-        // Check for updates on every app launch in background
-        appUpdateManager.checkForUpdates(silent = true)
+        try {
+            // Check for updates on every app launch in background
+            appUpdateManager.checkForUpdates(silent = true)
+        } catch (_: Exception) { }
 
         setContent {
             val windowSizeClass = calculateWindowSizeClass(this)
@@ -46,30 +51,36 @@ class MainActivity : ComponentActivity() {
             val isUpdateDialogVisible by appUpdateManager.isDialogVisible
                 .collectAsStateWithLifecycle()
 
-            val currentSettings = settings
+            val currentSettings = settings ?: UserSettings(
+                themeMode = ThemeMode.DARK,
+                accentColor = AccentColorPreset.SAPPHIRE,
+                dailyNotificationEnabled = true,
+                dailyNotificationHour = 21,
+                dailyNotificationMinute = 0,
+                badgeEnabled = true,
+                isOnboardingCompleted = true
+            )
 
-            if (currentSettings != null) {
-                ChronicleTheme(
-                    themeMode = currentSettings.themeMode,
-                    accentColor = currentSettings.accentColor
-                ) {
-                    val navController = rememberNavController()
-                    ChronicleNavGraph(
-                        navController = navController,
-                        isOnboardingCompleted = currentSettings.isOnboardingCompleted,
-                        widthSizeClass = windowSizeClass.widthSizeClass
-                    )
+            ChronicleTheme(
+                themeMode = currentSettings.themeMode,
+                accentColor = currentSettings.accentColor
+            ) {
+                val navController = rememberNavController()
+                ChronicleNavGraph(
+                    navController = navController,
+                    isOnboardingCompleted = currentSettings.isOnboardingCompleted,
+                    widthSizeClass = windowSizeClass.widthSizeClass
+                )
 
-                    // Global in-app update dialog
-                    UpdateDialog(
-                        updateState = updateState,
-                        isVisible = isUpdateDialogVisible,
-                        onDismiss = { appUpdateManager.dismissDialog() },
-                        onDownload = { info -> appUpdateManager.startDownload(info) },
-                        onInstall = { file -> appUpdateManager.installApk(file) },
-                        onRetry = { appUpdateManager.checkForUpdates(silent = false) }
-                    )
-                }
+                // Global in-app update dialog
+                UpdateDialog(
+                    updateState = updateState,
+                    isVisible = isUpdateDialogVisible,
+                    onDismiss = { appUpdateManager.dismissDialog() },
+                    onDownload = { info -> appUpdateManager.startDownload(info) },
+                    onInstall = { file -> appUpdateManager.installApk(file) },
+                    onRetry = { appUpdateManager.checkForUpdates(silent = false) }
+                )
             }
         }
     }

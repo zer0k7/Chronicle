@@ -1,4 +1,4 @@
-# Chronicle v1.4.0
+# Chronicle v1.4.1
 
 ## What's New
 
@@ -22,7 +22,7 @@
 
 ### Cognitive Intelligence & Behavioral Psychology Engines
 * **Screen Time Forecasting & Cognitive Burnout Index:** Real-time end-of-day screen time projections and 4-tier Cognitive Burnout Index (*Low*, *Moderate*, *Elevated*, *High*).
-* **Doomscroll Radar & 20-20-20 Eye Rest Rest:** Prolonged continuous session detector (>30m) with 20-20-20 optometric eye rest countdown timers.
+* **Doomscroll Radar & 20-20-20 Eye Rest:** Prolonged continuous session detector (>30m) with 20-20-20 optometric eye rest countdown timers.
 * **Distraction Cascade Analyzer:** Sequential app transition pattern recognition identifying habit loops (*Trigger App -> Target App*).
 * **Weekly Executive Intelligence Briefing:** Executive scorecard aggregating weekly focus time, conscious hours reclaimed, and distraction indexes.
 * **Digital Zen Shield Modal:** Mindful reflection overlay with a 15-second friction timer when approaching application limits.
@@ -31,10 +31,10 @@
 
 ## Improvements & Fixes
 
-* **Strict RemoteViews Whitelist Compliance:** Replaced layout dividers with Android `RemoteViews`-compliant image components, passing strict `RemoteViewLayout` lint validation.
-* **Unified Domain Models:** Backwards-compatible domain models supporting all analytics, telemetry, and widget data consumers.
-* **Strict IST Timezone Standard:** All calculations, reset triggers, sleep leak analyzers, and depletion projectors operate strictly in Indian Standard Time (UTC+5:30).
-* **Zero Emojis Enforced:** Zero emojis across all UI screens, logs, resources, layouts, and release documentation.
+* **R8 / ProGuard Shrinker Protection:** Added comprehensive rules preserving Hilt generated components, Widget EntryPoint accessors, Room DAOs, ViewModels, and domain enums (`ThemeMode`, `AccentColorPreset`, `AppCategory`, `BurnoutRisk`) to eliminate release runtime crashes.
+* **Resilient Startup Pipeline:** Hardened `MainActivity` and `ChronicleApplication` with fallback preferences and defensive initialization to guarantee crash-free launches across all Android OEM skins (MIUI, HyperOS, One UI, Pixel).
+* **RemoteViews Divider Whitelist:** Fully compliant with Android AppWidget RemoteViews specifications.
+* **Zero Emojis Enforced:** Zero emojis anywhere in UI, resources, logs, or release documentation.
 
 ---
 
@@ -49,4 +49,4 @@
 ## Installation
 
 * **In-App Update:** Automatically detected on launch via the built-in update manager.
-* **Manual Install:** Download `chronicle-v1.4.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
+* **Manual Install:** Download `chronicle-v1.4.1.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
