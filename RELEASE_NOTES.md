@@ -1,53 +1,42 @@
-# Chronicle v1.2.0
+# Chronicle v1.3.0
 
 ## What's New
 
-### Application Detail Drill-Down Dossier
-* **Interactive App Insights:** Tap any application on the Timeline or Analytics tab to open an in-depth **Application Dossier Sheet**.
-* **24-Hour Single-App Activity Profile:** Dedicated 24-column timeline canvas rendering the exact hours and minutes spent in a specific application throughout the day.
-* **7-Day Trajectory Bar Chart:** Visualizes multi-day usage history and trends for individual applications.
-* **Micro-Check Loop Detector:** Identifies unconscious "ghost" micro-opens where an app was launched and exited in under 30 seconds.
+### Dedicated Network Data Telemetry Suite (4th Tab)
+* **Dedicated Data Tab:** Integrated into the floating pill bottom navigation bar and two-pane navigation rail (`Timeline`, `Analytics`, `Data`, `Settings`).
+* **Real-Time Bandwidth Hero Card:** Live overview of total network data consumed across Day, Week, Month, and Billing Cycle periods.
+* **Hardware-Level Segmentation:** Direct separation of **Wi-Fi** vs **Mobile SIM** data with proportional distribution ratio bars.
+* **Per-Application Network Consumption:** Ranks installed and removed applications by total data usage, complete with percentage badges and explicit **Download (Rx)** vs **Upload (Tx)** telemetry.
 
-### Custom App Overrides & Categorization Suite
-* **Category Reclassification:** Reassign any application to custom categories (e.g. mark YouTube or Web Browsers as Productivity).
-* **Per-App Usage Budgets:** Configure custom daily minute time limits on a per-application basis with interactive slider controls.
-* **Distraction Flagging:** Tag habit-forming applications as distractions to prioritize them for reality-check alerts and focus enforcement.
+### Mobile Hotspot & Tethering Monitor
+* **Kernel Tethering Isolation:** Tracks and isolates network traffic transmitted to connected laptops, tablets, and secondary devices via kernel `UID_TETHERING`.
+* **Hotspot Summary Card:** Dedicated card showing exact hotspot data consumption for the active period.
 
-### Mindful Discipline Streaks Engine
-* **Goal Compliance Streak:** Tracks consecutive days spent within your configured daily screen time budget.
-* **Morning Shield Streak:** Tracks consecutive days maintaining digital discipline without opening social, gaming, or entertainment feeds in the first 45 minutes of waking.
-* **Sleep Sanctuary Streak:** Tracks consecutive days protecting the hour before bedtime from late-night screen intrusion.
-* **All-Time Record:** Celebrates your longest recorded discipline streak on the Analytics dashboard.
-
-### Direct CSV Data Exporter
-* **Comprehensive Data Export:** Export complete historical usage records to CSV format with dates, package names, labels, categories, active durations, launch counts, and IST timestamps.
-* **System Share Integration:** Exports seamlessly via Android FileProvider for instant sharing or saving to local device storage.
-
-### Home Screen Android Widgets
-* **2x2 Screen Time & Goal Widget:** Compact launcher widget showing real-time screen time, daily goal progress, and remaining conscious budget.
-* **4x2 Timeline Summary Widget:** Wide widget displaying daily active time, active application count, and your most-used app with duration.
-* **Background Sync Refresh:** Automatically synchronizes and updates widget displays whenever background sync completes.
+### Carrier Data Budgets & Billing Cycle Engine
+* **Daily Mobile Data Budget:** Configure target daily carrier limits (256 MB to 5 GB) with dynamic progress bars and percentage threshold warnings.
+* **Monthly Quota & Billing Cycle:** Set total monthly data allowances (5 GB to 200 GB) aligned to your carrier's billing cycle reset day (1st to 31st).
+* **High Usage Alerts:** Configurable notification warnings when approaching 90% of daily data quota.
 
 ---
 
 ## Improvements & Fixes
 
-* **Database Engine Upgrade (v2):** Added `app_custom_overrides` table in Room with automated migration to persist category overrides and per-app limits.
-* **Strict IST Timezone Alignment:** Pinned all streak calculations, 24-hour single-app profiles, and morning shield windows to Indian Standard Time (UTC+5:30).
-* **Zero Emojis:** Verified complete absence of emojis across all UI layouts, strings, logs, comments, and release documentation.
-* **Custom Material 3 Polish:** Custom BottomSheet and Card dialogs with no default Android AlertDialog or Toast components.
+* **Database Engine Upgrade (v3):** Added `daily_data_summaries` and `app_data_usage` tables in Room with automated migration.
+* **Background Network Synchronization:** Integrated network stats sync into `DailyUsageSyncWorker` for continuous local history updates.
+* **Permission Resilience:** Non-intrusive Material 3 permission banner guiding users to system Usage Access settings when required.
+* **Zero Emojis:** Verified complete absence of emojis across all UI screens, logs, resources, and release notes.
 
 ---
 
 ## Verification & Integrity
 
-* **Unit Testing:** Automated test coverage for `DisciplineStreaks` structures, `CustomAppOverride` configurations, and `UsageInsightsTest`.
-* **Clean Architecture:** Maintained strict decoupling across data DAOs, domain use cases, ViewModels, and Jetpack Compose screens.
-* **100% Offline & Private:** Zero network analytics, zero third-party telemetry, fully local-first processing.
+* **Unit Testing:** Full automated test coverage for data size conversions, network aggregation, and filter pipelines in `NetworkDataUsageTest`.
+* **Clean Architecture:** Strict separation between Android `NetworkStatsManager`, Room DAOs, domain use cases, ViewModels, and Jetpack Compose composables.
+* **100% Offline & Private:** Zero third-party network SDKs, zero telemetry tracking, strictly on-device processing.
 
 ---
 
 ## Installation
 
 * **In-App Update:** Automatically detected on launch via the built-in OTA update manager.
-* **Manual Install:** Download `chronicle-v1.2.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
+* **Manual Install:** Download `chronicle-v1.3.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
