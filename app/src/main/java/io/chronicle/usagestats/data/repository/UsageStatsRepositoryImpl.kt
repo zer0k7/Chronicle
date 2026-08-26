@@ -623,7 +623,7 @@ class UsageStatsRepositoryImpl(
     }
 
     private fun calculateStreaksFromSummaries(
-        summaries: List<DailyUsageSummaryEntity>,
+        summaries: List<DailySummaryEntity>,
         goalMinutes: Int
     ): DisciplineStreaks {
         if (summaries.isEmpty()) return DisciplineStreaks()

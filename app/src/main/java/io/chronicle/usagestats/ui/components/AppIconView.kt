@@ -39,14 +39,15 @@ fun AppIconView(
     packageName: String,
     appName: String,
     isRemoved: Boolean,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    size: androidx.compose.ui.unit.Dp = 40.dp
 ) {
     val context = LocalContext.current
 
     if (isRemoved) {
         Box(
             modifier = modifier
-                .size(40.dp)
+                .size(size)
                 .clip(RoundedCornerShape(8.dp))
                 .background(ColorRemoved.copy(alpha = 0.15f)),
             contentAlignment = Alignment.Center
@@ -55,7 +56,7 @@ fun AppIconView(
                 imageVector = Icons.Outlined.DeleteOutline,
                 contentDescription = appName,
                 tint = ColorRemoved,
-                modifier = Modifier.size(24.dp)
+                modifier = Modifier.size(size * 0.6f)
             )
         }
     } else {
@@ -88,13 +89,13 @@ fun AppIconView(
                     .build(),
                 contentDescription = appName,
                 modifier = modifier
-                    .size(40.dp)
+                    .size(size)
                     .clip(RoundedCornerShape(8.dp))
             )
         } else {
             Box(
                 modifier = modifier
-                    .size(40.dp)
+                    .size(size)
                     .clip(RoundedCornerShape(8.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center
@@ -103,7 +104,7 @@ fun AppIconView(
                     imageVector = Icons.Outlined.PhoneAndroid,
                     contentDescription = appName,
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.size(22.dp)
+                    modifier = Modifier.size(size * 0.55f)
                 )
             }
         }

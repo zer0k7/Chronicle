@@ -113,6 +113,10 @@ object DateTimeUtils {
         return toZonedDateTime(epochMillis).format(SHORT_DATE_FORMATTER)
     }
 
+    fun formatMonth(epochMillis: Long): String {
+        return toZonedDateTime(epochMillis).format(MONTH_YEAR_FORMATTER)
+    }
+
     fun formatMonthYear(epochMillis: Long): String {
         return toZonedDateTime(epochMillis).format(MONTH_YEAR_FORMATTER)
     }
@@ -129,6 +133,11 @@ object DateTimeUtils {
     fun formatTime24(hour: Int, minute: Int): String {
         val time = LocalTime.of(hour, minute)
         return time.format(TIME_24_FORMATTER)
+    }
+
+    fun formatDateTime(epochMillis: Long): String {
+        val zdt = toZonedDateTime(epochMillis)
+        return "${zdt.format(DATE_FORMATTER)} ${zdt.format(TIME_FORMATTER)}"
     }
 
     fun formatDateRange(startMillis: Long, endMillis: Long): String {
@@ -154,12 +163,33 @@ object DateTimeUtils {
         }
     }
 
+    fun isTodayOrFuture(epochMillis: Long, period: TimelinePeriod): Boolean {
+        val now = nowInIst()
+        val target = toZonedDateTime(epochMillis)
+        return when (period) {
+            TimelinePeriod.DAY -> !target.toLocalDate().isBefore(now.toLocalDate())
+            TimelinePeriod.WEEK -> {
+                val currentWeekStart = now.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                val targetWeekStart = target.toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+                !targetWeekStart.isBefore(currentWeekStart)
+            }
+            TimelinePeriod.MONTH -> target.year > now.year || (target.year == now.year && target.monthValue >= now.monthValue)
+            TimelinePeriod.YEAR -> target.year >= now.year
+        }
+    }
+
+    fun isSameWeek(epochMillis1: Long, epochMillis2: Long): Boolean {
+        val d1 = toZonedDateTime(epochMillis1).toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val d2 = toZonedDateTime(epochMillis2).toLocalDate().with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        return d1 == d2
+    }
+
     fun getDaysInRange(startMillis: Long, endMillis: Long): List<LocalDate> {
         val startDate = toZonedDateTime(startMillis).toLocalDate()
-        val endDate = toZonedDateTime(endMillis).toLocalDate() // exclusive, so don't add it
+        val endDate = toZonedDateTime(endMillis).toLocalDate()
         val days = mutableListOf<LocalDate>()
         var current = startDate
-        while (current.isBefore(endDate)) { // strictly before, not isAfter
+        while (current.isBefore(endDate)) {
             days.add(current)
             current = current.plusDays(1)
         }
