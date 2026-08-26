@@ -1,49 +1,53 @@
-# Chronicle v1.1.0
+# Chronicle v1.2.0
 
 ## What's New
 
-### Streamlined Timeline & Visual Hierarchy Refactor
-* **Clutter-Free Timeline:** Redesigned the primary Timeline view to deliver an immediate, glanceable overview of daily device consumption. Duplicated analytics cards were relocated to the dedicated Analytics hub.
-* **Daily Screen Time Target Progress Ring:** Integrated a dynamic screen time progress indicator inside the main summary card that reflects consumption against your configured goal with real-time status color shifts (Green for disciplined usage, Amber for approaching thresholds, Red for goal overages).
+### Application Detail Drill-Down Dossier
+* **Interactive App Insights:** Tap any application on the Timeline or Analytics tab to open an in-depth **Application Dossier Sheet**.
+* **24-Hour Single-App Activity Profile:** Dedicated 24-column timeline canvas rendering the exact hours and minutes spent in a specific application throughout the day.
+* **7-Day Trajectory Bar Chart:** Visualizes multi-day usage history and trends for individual applications.
+* **Micro-Check Loop Detector:** Identifies unconscious "ghost" micro-opens where an app was launched and exited in under 30 seconds.
 
-### Structured Analytics Hub
-* **Organized Categorical Sections:** Restructured the Analytics tab into distinct behavioral domains with dedicated headers:
-  * **Usage Breakdown:** High-level category distributions with real-time productivity scores.
-  * **Habits and Routine:** Pickups, average session durations, sleep-wake windows, bedtime usage, and longest binge sessions.
-  * **Screen Life Impact:** Conscious waking life calculations, annual days lost, and ghost reflex opens under 30 seconds.
-  * **Psychological Metrics:** Life Clock projections, Dopamine Debt fasting prescriptions, and phantom reflex unlocks.
-  * **App Comparison:** Side-by-side comparative inspection of app sessions, launch frequencies, and active foreground times.
-  * **All Apps:** Searchable and category-filtered application rankings.
+### Custom App Overrides & Categorization Suite
+* **Category Reclassification:** Reassign any application to custom categories (e.g. mark YouTube or Web Browsers as Productivity).
+* **Per-App Usage Budgets:** Configure custom daily minute time limits on a per-application basis with interactive slider controls.
+* **Distraction Flagging:** Tag habit-forming applications as distractions to prioritize them for reality-check alerts and focus enforcement.
 
-### Comprehensive Power-User Settings Suite
-* **Screen Time Budgets:** Added interactive daily screen time goal configuration (30 minutes to 8 hours) with optional weekend override thresholds.
-* **Focus Mode Scheduler:** Configurable weekday focus windows to encourage disciplined digital boundaries during work hours.
-* **Enhanced Notifications Control:** Dedicated toggles for motivational reality checks (gaming, social doomscroll, low productivity alerts), positive milestone achievements, and weekend quiet mode.
-* **General System Settings:** First day of the week customization (Monday vs. Sunday), configurable daily usage counter reset hour (IST), and uninstalled app visibility controls.
-* **Data Management Suite:** One-tap CSV usage history export, custom confirmation dialog for clearing cached statistics, and configurable local data retention windows.
-* **Accessibility Enhancements:** Added toggles for dense compact layout and high-contrast text rendering.
+### Mindful Discipline Streaks Engine
+* **Goal Compliance Streak:** Tracks consecutive days spent within your configured daily screen time budget.
+* **Morning Shield Streak:** Tracks consecutive days maintaining digital discipline without opening social, gaming, or entertainment feeds in the first 45 minutes of waking.
+* **Sleep Sanctuary Streak:** Tracks consecutive days protecting the hour before bedtime from late-night screen intrusion.
+* **All-Time Record:** Celebrates your longest recorded discipline streak on the Analytics dashboard.
+
+### Direct CSV Data Exporter
+* **Comprehensive Data Export:** Export complete historical usage records to CSV format with dates, package names, labels, categories, active durations, launch counts, and IST timestamps.
+* **System Share Integration:** Exports seamlessly via Android FileProvider for instant sharing or saving to local device storage.
+
+### Home Screen Android Widgets
+* **2x2 Screen Time & Goal Widget:** Compact launcher widget showing real-time screen time, daily goal progress, and remaining conscious budget.
+* **4x2 Timeline Summary Widget:** Wide widget displaying daily active time, active application count, and your most-used app with duration.
+* **Background Sync Refresh:** Automatically synchronizes and updates widget displays whenever background sync completes.
 
 ---
 
 ## Improvements & Fixes
 
-* **Eliminated Redundant Renders:** Resolved duplicate rendering of habit, psychology, and category cards between Timeline and Analytics screens, improving scroll performance.
-* **Context-Aware Notifications:** Notification engine now strictly respects reality-check toggles and weekend quiet mode settings before dispatching alarms.
-* **Extended Dialog Engine:** Upgraded custom Material 3 dialog components to host interactive sliders, radio groups, and confirmation flows without using stock Android alerts.
-* **Strict IST Date Boundaries:** All new schedules, weekend checks, and daily reset operations execute deterministically according to Indian Standard Time (UTC+5:30).
-* **Zero Emojis:** Verified complete absence of emojis across all UI strings, logs, comments, and notifications.
+* **Database Engine Upgrade (v2):** Added `app_custom_overrides` table in Room with automated migration to persist category overrides and per-app limits.
+* **Strict IST Timezone Alignment:** Pinned all streak calculations, 24-hour single-app profiles, and morning shield windows to Indian Standard Time (UTC+5:30).
+* **Zero Emojis:** Verified complete absence of emojis across all UI layouts, strings, logs, comments, and release documentation.
+* **Custom Material 3 Polish:** Custom BottomSheet and Card dialogs with no default Android AlertDialog or Toast components.
 
 ---
 
 ## Verification & Integrity
 
-* **Clean Architecture Compliance:** Preserved strict boundary separation across DataStore preference repositories, Room local database layers, domain models, and Jetpack Compose ViewModels.
-* **Privacy & Local Processing:** All goal checks, focus schedules, and data clear actions execute 100% on-device on background coroutine dispatchers with zero network telemetry.
-* **Production Build Validation:** Target SDK 35, Min SDK 26, single ABI release packaging (`arm64-v8a`), and full R8/ProGuard optimization enabled.
+* **Unit Testing:** Automated test coverage for `DisciplineStreaks` structures, `CustomAppOverride` configurations, and `UsageInsightsTest`.
+* **Clean Architecture:** Maintained strict decoupling across data DAOs, domain use cases, ViewModels, and Jetpack Compose screens.
+* **100% Offline & Private:** Zero network analytics, zero third-party telemetry, fully local-first processing.
 
 ---
 
 ## Installation
 
 * **In-App Update:** Automatically detected on launch via the built-in OTA update manager.
-* **Manual Install:** Download `chronicle-v1.1.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
+* **Manual Install:** Download `chronicle-v1.2.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
