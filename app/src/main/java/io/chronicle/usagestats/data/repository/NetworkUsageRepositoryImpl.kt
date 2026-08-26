@@ -103,7 +103,9 @@ class NetworkUsageRepositoryImpl @Inject constructor(
         // Filter network type
         var filteredList = summary.appUsageList.map { app ->
             val override = overrides[app.packageName]
-            val category = override?.customCategory ?: app.category
+            val category = override?.customCategory?.let {
+                runCatching { io.chronicle.usagestats.domain.model.AppCategory.valueOf(it) }.getOrNull()
+            } ?: app.category
             app.copy(category = category)
         }.filter { app ->
             when (filter.networkType) {

@@ -303,7 +303,7 @@ fun DataUsageScreen(
                         )
 
                         Button(
-                            onClick = { PermissionHelper.openUsageAccessSettings(context) },
+                            onClick = { PermissionHelper.openUsageStatsSettings(context) },
                             shape = RoundedCornerShape(12.dp)
                         ) {
                             Text(text = stringResource(R.string.data_permission_button))
@@ -688,17 +688,17 @@ private fun NetworkTypeFilterRow(
     selectedType: NetworkTypeFilter,
     onTypeSelected: (NetworkTypeFilter) -> Unit
 ) {
+    val filters = listOf(
+        NetworkTypeFilter.ALL to stringResource(R.string.data_filter_all),
+        NetworkTypeFilter.MOBILE to stringResource(R.string.data_filter_mobile),
+        NetworkTypeFilter.WIFI to stringResource(R.string.data_filter_wifi),
+        NetworkTypeFilter.HOTSPOT to stringResource(R.string.data_filter_hotspot)
+    )
+
     LazyRow(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        val filters = listOf(
-            NetworkTypeFilter.ALL to stringResource(R.string.data_filter_all),
-            NetworkTypeFilter.MOBILE to stringResource(R.string.data_filter_mobile),
-            NetworkTypeFilter.WIFI to stringResource(R.string.data_filter_wifi),
-            NetworkTypeFilter.HOTSPOT to stringResource(R.string.data_filter_hotspot)
-        )
-
         items(filters) { (type, label) ->
             FilterChip(
                 selected = selectedType == type,
