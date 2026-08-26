@@ -63,27 +63,27 @@ data class WakingLifeMetrics(
 data class LifeClockProjection(
     val dailyAverageMillis: Long = 0L,
     val yearsLostBy75: Double = 0.0,
-    val lifetimeYearsLost: Double = yearsLostBy75,
     val consciousPercentage: Double = 0.0,
+    val lifetimeYearsLost: Double = yearsLostBy75,
     val consciousLifePercentage: Double = consciousPercentage
 )
 
 data class DopamineDebt(
     val totalScreenTimeMillis: Long = 0L,
-    val weeklyActualMillis: Long = totalScreenTimeMillis,
     val baselineScreenTimeMillis: Long = 0L,
-    val weeklyBaselineMillis: Long = baselineScreenTimeMillis,
     val debtMillis: Long = 0L,
     val recommendedDigitalFastMinutes: Int = 0,
+    val weeklyActualMillis: Long = totalScreenTimeMillis,
+    val weeklyBaselineMillis: Long = baselineScreenTimeMillis,
     val recommendedFastMinutes: Int = recommendedDigitalFastMinutes
 )
 
 data class PhantomUnlocks(
     val count: Int = 0,
+    val quickRelapseUnlocks: Int = 0,
+    val averageMinutesBetweenUnlocks: Int = 0,
     val totalUnlocks: Int = count,
-    val totalQuickChecks: Int = 0,
-    val quickRelapseUnlocks: Int = totalQuickChecks,
-    val averageMinutesBetweenUnlocks: Int = 0
+    val totalQuickChecks: Int = quickRelapseUnlocks
 )
 
 data class DisciplineStreaks(
@@ -139,7 +139,7 @@ data class HabitInsights(
     val productivityScore: Int = 0,
     val categoryBreakdown: Map<AppCategory, Long> = emptyMap(),
     val longestSession: LongestSession? = null,
-    val peakUnlockHour: Int = 0,
+    val peakUnlockHour: Int? = null,
     val peakUnlockCount: Int = 0,
     val hourlyUnlocks: List<Int> = emptyList(),
     val ghostOpens: GhostOpensInsight? = null,

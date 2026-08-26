@@ -460,8 +460,12 @@ class UsageStatsRepositoryImpl(
 
             val baseline = daysCount * 2.5 * 3600 * 1000L
             val debt = (totalTime - baseline.toLong()).coerceAtLeast(0L)
-            val fastMins = ((debt.toDouble() / 3_600_000.0) * 30.0).toInt().coerceIn(0, 480)
-            val dopamineDebt = DopamineDebt(totalTime, baseline.toLong(), debt, fastMins)
+            val dopamineDebt = DopamineDebt(
+                totalScreenTimeMillis = totalTime,
+                baselineScreenTimeMillis = baseline.toLong(),
+                debtMillis = debt,
+                recommendedDigitalFastMinutes = fastMins
+            )
 
             val executiveBriefing = computeExecutiveBriefing(summaries, appList)
 
