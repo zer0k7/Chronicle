@@ -16,6 +16,8 @@ jobs:
     steps:
       - name: Checkout Source Code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up JDK 17
         uses: actions/setup-java@v4
@@ -73,6 +75,11 @@ jobs:
           TAG_VERSION="${{ steps.tag_info.outputs.TAG_NAME }}"
           CURRENT_DATE=$(date +'%Y-%m-%d')
 
+          git config user.name "zer0k7"
+          git config user.email "whoami@mailchat.me"
+          git checkout main || git checkout -b main origin/main
+          git pull origin main --rebase
+
           # Update fallback data attributes in docs/index.html
           sed -i "s|data-version=\"[^\"]*\"|data-version=\"v$TAG_VERSION\"|g" docs/index.html
           sed -i "s|data-release-date=\"[^\"]*\"|data-release-date=\"$CURRENT_DATE\"|g" docs/index.html
@@ -80,9 +87,7 @@ jobs:
           if git diff --quiet docs/index.html; then
             echo "Landing page is already up-to-date with v$TAG_VERSION."
           else
-            git config user.name "zer0k7"
-            git config user.email "whoami@mailchat.me"
             git add docs/index.html
             git commit -m "chore(site): update landing page to v$TAG_VERSION"
-            git push origin HEAD:main
+            git push origin main
           fi
