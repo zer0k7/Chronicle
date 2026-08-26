@@ -1,42 +1,52 @@
-# Chronicle v1.3.0
+# Chronicle v1.4.0
 
 ## What's New
 
-### Dedicated Network Data Telemetry Suite (4th Tab)
-* **Dedicated Data Tab:** Integrated into the floating pill bottom navigation bar and two-pane navigation rail (`Timeline`, `Analytics`, `Data`, `Settings`).
-* **Real-Time Bandwidth Hero Card:** Live overview of total network data consumed across Day, Week, Month, and Billing Cycle periods.
-* **Hardware-Level Segmentation:** Direct separation of **Wi-Fi** vs **Mobile SIM** data with proportional distribution ratio bars.
-* **Per-Application Network Consumption:** Ranks installed and removed applications by total data usage, complete with percentage badges and explicit **Download (Rx)** vs **Upload (Tx)** telemetry.
+### Advanced Network Telemetry & Data Intelligence Suite
+* **24-Hour Hourly Data Bar Chart:** Interactive 24-column distribution canvas displaying dual Wi-Fi vs Mobile SIM data traffic per hour, with tap-to-inspect app breakdowns.
+* **Multi-Day Historical Bandwidth Trends:** 7-day to 30-day historical bandwidth trend graphs for long-term carrier quota tracking.
+* **Category Bandwidth Distribution Bar:** Proportional multi-segment telemetry bar ranking bandwidth by application domain (Social, Entertainment, Productivity, Gaming, Communication, Utilities, System).
+* **Sleep Data Leak Detector:** Automatic overnight diagnostic scanner identifying silent background data drains between 00:00 and 07:00 IST.
+* **Real-Time Data Depletion Forecaster:** Dynamic projection model calculating current burn rate (MB/hour) against carrier allowances to predict exact depletion timestamps.
+* **Application Data Detail Modal:** Drilldown sheet featuring Wi-Fi Preferred toggle, warning badges for high-consumption apps, and system app settings shortcuts.
+* **Live Network Speed Foreground Service:** Optional notification shade speed meter displaying real-time download and upload transfer rates.
+* **Comprehensive Data Export:** Export granular network reports across any date range as high-resolution PNG image cards or paginated vector PDFs.
 
-### Mobile Hotspot & Tethering Monitor
-* **Kernel Tethering Isolation:** Tracks and isolates network traffic transmitted to connected laptops, tablets, and secondary devices via kernel `UID_TETHERING`.
-* **Hotspot Summary Card:** Dedicated card showing exact hotspot data consumption for the active period.
+### 5-Tier Material You Home Screen Widget Suite
+* **Daily Command Center Widget (Medium 4x2 / 4x3):** Screen time gauge, goal compliance ring, and real-time top 3 application breakdowns.
+* **Live Network Telemetry Widget (Medium 3x2 / 4x2):** Total bandwidth monitor, daily mobile quota progress, and Wi-Fi vs Mobile SIM telemetry.
+* **Digital Zen Widget (Small 2x2):** Mindful focus ring with conscious usage metrics and on-track pacing status.
+* **Habits & Ghost Reflex Widget (Medium 4x2):** Pickups, unlocks, and micro-check (<30s) compulsive reopen tracker.
+* **Compact Telemetry Pill (Small 2x1 / 3x1):** Streamlined at-a-glance pill showing active screen time and network bandwidth.
+* **Android 12+ Wallpaper Dynamic Color Extraction:** Full dynamic color integration across Android 12 through Android 15 (`@android:color/system_accent1_*` and `@android:color/system_neutral1_*`).
 
-### Carrier Data Budgets & Billing Cycle Engine
-* **Daily Mobile Data Budget:** Configure target daily carrier limits (256 MB to 5 GB) with dynamic progress bars and percentage threshold warnings.
-* **Monthly Quota & Billing Cycle:** Set total monthly data allowances (5 GB to 200 GB) aligned to your carrier's billing cycle reset day (1st to 31st).
-* **High Usage Alerts:** Configurable notification warnings when approaching 90% of daily data quota.
+### Cognitive Intelligence & Behavioral Psychology Engines
+* **Screen Time Forecasting & Cognitive Burnout Index:** Real-time end-of-day screen time projections and 4-tier Cognitive Burnout Index (*Low*, *Moderate*, *Elevated*, *High*).
+* **Doomscroll Radar & 20-20-20 Eye Rest Rest:** Prolonged continuous session detector (>30m) with 20-20-20 optometric eye rest countdown timers.
+* **Distraction Cascade Analyzer:** Sequential app transition pattern recognition identifying habit loops (*Trigger App -> Target App*).
+* **Weekly Executive Intelligence Briefing:** Executive scorecard aggregating weekly focus time, conscious hours reclaimed, and distraction indexes.
+* **Digital Zen Shield Modal:** Mindful reflection overlay with a 15-second friction timer when approaching application limits.
 
 ---
 
 ## Improvements & Fixes
 
-* **Database Engine Upgrade (v3):** Added `daily_data_summaries` and `app_data_usage` tables in Room with automated migration.
-* **Background Network Synchronization:** Integrated network stats sync into `DailyUsageSyncWorker` for continuous local history updates.
-* **Permission Resilience:** Non-intrusive Material 3 permission banner guiding users to system Usage Access settings when required.
-* **Zero Emojis:** Verified complete absence of emojis across all UI screens, logs, resources, and release notes.
+* **Strict RemoteViews Whitelist Compliance:** Replaced layout dividers with Android `RemoteViews`-compliant image components, passing strict `RemoteViewLayout` lint validation.
+* **Unified Domain Models:** Backwards-compatible domain models supporting all analytics, telemetry, and widget data consumers.
+* **Strict IST Timezone Standard:** All calculations, reset triggers, sleep leak analyzers, and depletion projectors operate strictly in Indian Standard Time (UTC+5:30).
+* **Zero Emojis Enforced:** Zero emojis across all UI screens, logs, resources, layouts, and release documentation.
 
 ---
 
 ## Verification & Integrity
 
-* **Unit Testing:** Full automated test coverage for data size conversions, network aggregation, and filter pipelines in `NetworkDataUsageTest`.
-* **Clean Architecture:** Strict separation between Android `NetworkStatsManager`, Room DAOs, domain use cases, ViewModels, and Jetpack Compose composables.
-* **100% Offline & Private:** Zero third-party network SDKs, zero telemetry tracking, strictly on-device processing.
+* **Automated CI Validation:** Passed all `./gradlew lint`, `./gradlew testDebugUnitTest`, and `./gradlew assembleRelease` checks.
+* **Unit Testing:** Comprehensive test coverage in `NetworkDataUsageTest` covering burn rate projections, habit loop transitions, and executive briefings.
+* **100% Offline & Private:** Zero third-party telemetry, zero cloud tracking, strictly local processing and Room persistence.
 
 ---
 
 ## Installation
 
-* **In-App Update:** Automatically detected on launch via the built-in OTA update manager.
-* **Manual Install:** Download `chronicle-v1.3.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
+* **In-App Update:** Automatically detected on launch via the built-in update manager.
+* **Manual Install:** Download `chronicle-v1.4.0.apk` from the Assets below and install on Android 8.0+ (API 26–35, arm64-v8a).
