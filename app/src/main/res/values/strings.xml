@@ -400,12 +400,7 @@
     <string name="settings_data_alerts">High Data Usage Alerts</string>
     <string name="settings_data_alerts_desc">Notify when approaching 90% of daily data quota</string>
 
-    <!-- Home Screen Widgets -->
-    <string name="widget_command_center_desc">Daily Command Center with screen time, goal gauge, and top apps breakdown</string>
-    <string name="widget_data_desc">Live Network Telemetry with total bandwidth and Wi-Fi vs Mobile SIM breakdown</string>
-    <string name="widget_zen_desc">Digital Zen &amp; Focus gauge showing current mindful flow</string>
-    <string name="widget_habits_desc">Habits &amp; Ghost Reflex monitor tracking unlocks and micro-checks</string>
-    <string name="widget_pill_desc">At-a-Glance Telemetry pill with screen time and bandwidth</string>
+    <!-- Home Screen Widgets Labels -->
     <string name="widget_label_device_unlocks">Device Unlocks</string>
     <string name="widget_label_ghost_reflex">Ghost Reflex</string>
     <string name="widget_label_ghost_sub">Micro-checks (&lt;30s)</string>
