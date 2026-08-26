@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="DEVICE UNLOCKS"
+            android:text="@string/widget_label_device_unlocks"
             android:textColor="@color/widget_on_surface_variant"
             android:textSize="9sp"
             android:textStyle="bold"
@@ -62,7 +62,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="GHOST REFLEX"
+            android:text="@string/widget_label_ghost_reflex"
             android:textColor="@color/widget_on_surface_variant"
             android:textSize="9sp"
             android:textStyle="bold"
@@ -83,7 +83,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginTop="2dp"
-            android:text="Micro-checks (<30s)"
+            android:text="@string/widget_label_ghost_sub"
             android:textColor="@color/widget_on_surface_variant"
             android:textSize="10sp" />
     </LinearLayout>

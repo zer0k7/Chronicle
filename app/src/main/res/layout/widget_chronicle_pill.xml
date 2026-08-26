@@ -22,7 +22,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="SCREEN TIME"
+            android:text="@string/widget_label_screen_time"
             android:textColor="@color/widget_on_surface_variant"
             android:textSize="8sp"
             android:textStyle="bold"
@@ -56,7 +56,7 @@
         <TextView
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="BANDWIDTH"
+            android:text="@string/widget_label_bandwidth"
             android:textColor="@color/widget_on_surface_variant"
             android:textSize="8sp"
             android:textStyle="bold"

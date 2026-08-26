@@ -11,7 +11,7 @@
     <TextView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:text="DIGITAL ZEN"
+        android:text="@string/widget_label_digital_zen"
         android:textColor="@color/widget_on_surface_variant"
         android:textSize="10sp"
         android:textStyle="bold"
