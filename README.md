@@ -17,28 +17,33 @@
 ---
 
 <p align="center">
-  <b>Chronicle</b> is a high-density, local-first Android application designed to track, analyze, and psychologically reconstruct your digital consumption patterns. Built with an always-on wallpaper aesthetic, Chronicle transforms raw device telemetry into actionable insights: conscious life calculations, ghost reflex loop detection, morning dopamine baseline tracking, per-app Wi-Fi/Mobile/Hotspot data monitoring, and 24-hour interactive session inspection.
+  <b>Chronicle</b> is a high-density, local-first Android application designed to track, analyze, and psychologically reconstruct your digital consumption patterns. Built with an always-on wallpaper aesthetic, Chronicle transforms raw device telemetry into actionable intelligence: conscious life calculations, ghost reflex loop detection, predictive burnout forecasts, continuous doomscroll radar, per-app Wi-Fi/Mobile SIM/Hotspot data monitoring, interactive 24-hour network canvases, and dynamic Material You home screen widgets.
 </p>
 
 </div>
 
 ---
 
-## Architectural Comparison: Chronicle vs Stock Wellbeing
+## Architectural Comparison: Chronicle Pro Suite vs Stock Wellbeing
 
 | Capability | Default System Wellbeing | Chronicle Pro Engine |
 |---|:---:|:---:|
 | **Hourly 24-Hour Timeline** | Single static total | **Interactive 24-column tap-to-filter canvas** |
 | **Network & Data Telemetry** | Basic system carrier total | **Per-app Wi-Fi, Mobile SIM, Rx/Tx & Hotspot tracking** |
+| **Hourly Network Traffic Canvas** | Not available | **24-hour dual-stream Wi-Fi vs Mobile SIM spike canvas** |
+| **Multi-Day Bandwidth Charts** | Not available | **7-day to 30-day historical progression curves** |
+| **Overnight Sleep Drain Detector** | Not available | **Detects silent background cellular/battery drain (00:00 - 07:00 IST)** |
+| **Wi-Fi Preferred App Warnings** | Not available | **Tags bandwidth-heavy apps with amber cellular warnings** |
+| **Live Network Speed Meter** | Not available | **Optional real-time transfer rate foreground service** |
+| **Screen Time Forecast & Burnout** | Not available | **End-of-day projection and 4-tier cognitive fatigue risk score** |
+| **Continuous Doomscroll Radar** | Not available | **Prolonged session detector with 20-20-20 optic rest timer** |
+| **Distraction Cascade Analyzer** | Not available | **Reveals sequential rabbit-hole triggers (e.g. WhatsApp to Instagram)** |
+| **Carrier Quota Depletion Radar** | Not available | **Live data burn rate (MB/hr) and projected exhaustion time** |
+| **Weekly Executive Briefing** | Generic recap | **Executive scorecard with conscious hours reclaimed & efficiency score** |
+| **Digital Zen Shield** | Hard stock block | **Mindful reflection prompt with 15-second conscious friction timer** |
+| **Dynamic Material You Widgets** | Generic / None | **5 bespoke widgets extracting live wallpaper colors (Android 12+)** |
 | **App Detail Drill-Down Dossier** | Basic total minutes | **24h activity strip, 7d trajectory, ghost opens & budget slider** |
-| **Mindful Discipline Streaks** | Not available | **Goal compliance, Morning Shield, and Sleep Sanctuary streaks** |
-| **Conscious Life Calculator** | Not available | **Calculates % of 16h waking day & annual days lost** |
-| **Ghost Reflex Loop Detection** | Not available | **Isolates micro-checks under 30s opened out of habit** |
-| **Morning Bed Doomscroll** | Not available | **Tracks consumption within 45m of waking up** |
-| **Dynamic Tough-Love Notifications** | Static generic counter | **Context-aware reality checks on gaming & feeds** |
-| **App vs App Comparison** | Not available | **Head-to-head metrics, launches, and session length** |
 | **Removed App Preservation** | Wiped upon uninstall | **100% historical usage retained and categorized** |
-| **Home Screen Widgets** | Generic / None | **2x2 Goal Ring and 4x2 Mini-Timeline Widgets** |
 | **Data Export** | Restricted | **Paginated vector PDF, high-res PNG & Full CSV export** |
 | **Privacy & Telemetry** | Cloud account binding | **100% on-device local Room storage, zero network tracking** |
 
@@ -46,50 +51,51 @@
 
 ## Core Feature Suite
 
-### 1. Network Data, Wi-Fi & Hotspot Telemetry Suite
+### 1. Network Data, Wi-Fi & Cellular Telemetry Suite
 Monitor your daily and historical bandwidth consumption with precise hardware-level segmentation:
-* **Wi-Fi vs Mobile SIM Split:** Displays real-time device totals and visual proportional ratio bars.
-* **Per-App Data Telemetry:** Breakdown of Download (Rx) vs Upload (Tx) bytes for every application.
-* **Mobile Hotspot & Tethering Monitor:** Isolates and tracks data shared with connected laptops and secondary devices via kernel `UID_TETHERING`.
-* **Carrier Data Budgets:** Configure daily mobile data limits (e.g. 2.0 GB) and billing cycle reset days with warning thresholds.
+* **Wi-Fi vs Mobile SIM Split:** Mathematical separation without double-counting; standalone Mobile Hotspot & Tethering tracking via kernel `UID_TETHERING`.
+* **24-Hour Hourly Network Canvas:** Interactive 24-column bar chart for Day view displaying hourly Wi-Fi vs Mobile data spikes with tap-to-filter app breakdowns.
+* **Multi-Day Historical Bandwidth Chart:** 7-day to 30-day bandwidth trend graphs for Week and Month views.
+* **Category Bandwidth Distribution Bar:** Proportional visualization across Streaming, Social, Productivity, Gaming, Communication, and System categories.
+* **Overnight Sleep Drain Detector:** Identifies and isolates silent background cellular and Wi-Fi data drains occurring during sleep hours (00:00 to 07:00 IST).
+* **Wi-Fi Preferred App Flags:** Mark heavy apps as Wi-Fi preferred with amber warning badges when consuming mobile data.
+* **Live Network Speed Meter:** Optional lightweight foreground service delivering real-time transfer rates (KB/s, MB/s) in the notification shade.
+* **Carrier Data Quota & Billing Cycle:** Daily mobile data limits, billing cycle anchor days, and custom warning thresholds.
+* **Dedicated Data Export:** Export custom date ranges as paginated vector PDFs or high-resolution PNG summary images.
 
-### 2. Application Detail Drill-Down Dossier
+### 2. Dynamic Material You Home Screen Widgets (5 Bespoke Widgets)
+Built with Android 12+ (API 31+) dynamic wallpaper color extraction (`@android:color/system_*` tokens) and smooth dark/light theme adaptation:
+1. **Daily Command Center (4x2 / 4x3):** Big bold screen time, daily goal progress ring, `% of goal reached`, and top 3 most-used apps with duration indicators.
+2. **Live Network Telemetry (3x2 / 4x2):** Grand total bandwidth, dedicated Mobile SIM vs Wi-Fi telemetry cards, and daily quota progress gauge.
+3. **Digital Zen & Focus (2x2):** Focused gauge with screen time, goal progress bar, and mindful state indicator (*Disciplined Flow*, *Nearing Budget*, *Over Budget*).
+4. **Habits & Ghost Reflex Monitor (4x2):** Total device unlocks, pickup frequency rate (*Every 15m*), and ghost reflex micro-checks (<30s).
+5. **At-a-Glance Telemetry Pill (2x1 / 3x1):** Sleek horizontal pill displaying Screen Time on the left and Total Data Bandwidth on the right.
+
+### 3. Cognitive & Telemetry Intelligence Engines
+* **Screen Time Forecast & Cognitive Burnout Index:** Real-time predictive pacing calculating projected end-of-day screen time and evaluating cognitive fatigue into a 4-tier Burnout Risk score (*Low*, *Moderate*, *Elevated*, *High*).
+* **Continuous Doomscroll Radar:** Prolonged session detector that flags un-interrupted app usage (>30m) and launches an interactive **20-20-20 Eye Rest Reset** timer.
+* **Distraction Cascade & Habit Loop Analyzer:** Discovers sequential app-launch rabbit holes (*Trigger App -> Destination App*, e.g., WhatsApp immediately triggering Instagram).
+* **Carrier Quota Depletion Radar:** Computes live cellular burn rate (MB/hr) and projects the exact minute your mobile quota will run out.
+* **Weekly Executive Briefing Card:** Executive scorecard in Week view reviewing conscious hours reclaimed, longest focus streak, top distraction trigger, and digital efficiency rating.
+* **Digital Zen Shield:** Mindful reflection pause with deep breathing prompts and a 15-second friction extension timer for app limits.
+
+### 4. Application Detail Drill-Down Dossier
 Tap any application on the Timeline or Analytics screen to open a modal dossier sheet:
 * **24-Hour Single-App Profile:** Hourly bar strip displaying the exact hours an app was used today.
 * **7-Day Trajectory Chart:** Multi-day historical trend analysis for individual applications.
 * **Micro-Check Loop Detector:** Identifies and counts unconscious reflex opens lasting under 30 seconds.
-* **Custom App Overrides:** Reclassify categories, set individual daily minute budgets, and toggle distraction flags.
+* **Custom App Overrides:** Reclassify categories, set individual daily minute budgets, toggle distraction flags, and mark Wi-Fi preferred status.
 
-### 3. Mindful Discipline Streaks Engine
-Build sustainable digital habits through non-gamified discipline metrics:
+### 5. Mindful Discipline Streaks Engine
 * **Goal Compliance Streak:** Consecutive days staying within your daily screen time budget.
 * **Morning Shield Streak:** Consecutive days protecting your morning baseline from social and gaming feeds within 45 minutes of waking.
 * **Sleep Sanctuary Streak:** Consecutive days protecting the hour before bedtime from late-night screen intrusion.
-* **All-Time Record:** Celebrates your longest recorded discipline streak.
+* **All-Time Record:** Tracks and preserves your longest recorded discipline streak.
 
-### 4. Conscious Waking Life Calculator
-Raw numbers like *4 hours 30 mins* fail to trigger behavioural urgency. Chronicle translates your total foreground usage into the exact proportion of your **16-hour conscious waking life** spent staring at screens, projecting the total full 24-hour days lost across the calendar year.
-
-### 5. Interactive 24-Hour Timeline Bar Chart
-A high-density 24-column canvas rendering usage across all 24 hours of the day (00:00 to 23:59). Tapping any individual hour highlights that time slot and dynamically filters the application list to show exclusively what ran during that window.
-
-### 6. Dynamic Reality-Check Notifications
-Replaces uninspired daily counter notifications with context-aware, targeted alerts:
-* **Heavy Gaming Reality Check:** Triggers when gaming exceeds 90 minutes.
-* **Doomscroll Alert:** Triggers when social media feeds exceed 90 minutes.
-* **Focus & Low Productivity Alert:** Alerts on high screen time with low productivity score.
-* **High Discipline Celebration:** Acknowledges focused work sessions above 65% productivity.
-* **Sleep Recovery Notice:** Highlights screen time immediately prior to bedtime.
-
-### 7. Full CSV, PDF & Infographic Exporter
+### 6. Full CSV, PDF & Infographic Exporter
 * **CSV Data Exporter:** One-tap export of historical usage records with dates, packages, categories, durations, and timestamps via Android `FileProvider`.
-* **Paginated Vector PDF:** Multi-page reports with thematic color palettes and category distribution charts.
+* **Paginated Vector PDF:** Multi-page reports with thematic color palettes, category distribution charts, and data breakdowns.
 * **Shareable Infographics:** High-resolution PNG summary cards rendered directly on-device.
-
-### 8. Home Screen Android Widgets
-* **2x2 Goal Ring Widget:** Real-time screen time, daily goal progress, and remaining conscious budget.
-* **4x2 Timeline Summary Widget:** Overview of daily active time, active application count, and your most-used application.
-* **Background Sync Integration:** Automatically updates widget displays upon background data synchronization.
 
 ---
 
@@ -106,7 +112,7 @@ Chronicle is built according to Modern Android Architecture standards, enforcing
                                            v
                   +-------------------------------------------------+
                   |                  Domain Layer                   |
-                  |        Use Cases, Domain Models, Contracts      |
+                  |   Use Cases, Intelligence Engines, Contracts    |
                   +-------------------------------------------------+
                                            |
                                            v
@@ -117,15 +123,15 @@ Chronicle is built according to Modern Android Architecture standards, enforcing
                                            |
                                            v
                   +-------------------------------------------------+
-                  |              Background Workers                 |
-                  |       WorkManager  |  Exact AlarmManager        |
+                  |              Background Services                |
+                  |   WorkManager | LiveSpeedService | AlarmManager |
                   +-------------------------------------------------+
 ```
 
-* **Presentation Layer:** Declarative UI with Jetpack Compose, dynamic Material You color extraction, custom-themed dialogs, and navigation rail / floating navigation bars.
-* **Domain Layer:** Clean business use cases for timeline aggregation, streak evaluation, data usage filtering, and report generation.
-* **Data Layer:** Room database (v3) for persistent usage snapshots and custom overrides, DataStore for preferences, and `NetworkStatsDataSource` querying platform `NetworkStatsManager`.
-* **Background Tasks:** WorkManager synchronization and deterministic AlarmManager execution for Indian Standard Time (IST, UTC+5:30) notification schedules.
+* **Presentation Layer:** Declarative UI with Jetpack Compose, Material You dynamic color extraction, custom-themed dialogs, and navigation rail / floating navigation bars.
+* **Domain Layer:** Clean business use cases for timeline aggregation, streak evaluation, data usage filtering, predictive telemetry forecasting, and report generation.
+* **Data Layer:** Room database for persistent usage snapshots and custom overrides, DataStore for preferences, and `NetworkStatsDataSource` querying platform `NetworkStatsManager`.
+* **Background Tasks:** WorkManager synchronization, foreground speed services, and deterministic AlarmManager execution for Indian Standard Time (IST, UTC+5:30) notification schedules.
 
 ---
 
@@ -159,11 +165,12 @@ Chronicle is built according to Modern Android Architecture standards, enforcing
 | Permission | Scope & Purpose |
 |---|---|
 | `PACKAGE_USAGE_STATS` | System permission granting read access to foreground session timestamps, launches, and NetworkStats telemetry. |
-| `POST_NOTIFICATIONS` | Required on Android 13+ to deliver scheduled daily summaries and reality-check alerts. |
+| `POST_NOTIFICATIONS` | Required on Android 13+ to deliver scheduled daily summaries, live speed meter, and reality-check alerts. |
 | `QUERY_ALL_PACKAGES` | Allows mapping package identifiers to installed application labels and high-resolution icons. |
 | `SCHEDULE_EXACT_ALARM` | Guarantees deterministic notification execution at configured user times. |
 | `READ_MEDIA_IMAGES` | Allows saving generated report infographics directly to the system photo gallery. |
 | `ACCESS_NETWORK_STATE` | Allows querying active network interface states for Wi-Fi and Mobile data monitoring. |
+| `FOREGROUND_SERVICE_DATA_SYNC` | Allows running the optional real-time network speed meter in the notification shade. |
 
 ---
 

@@ -522,6 +522,37 @@ fun ReportScreen(
                         }
                     }
 
+                    // Predictive Screen Time Forecast & Burnout Risk
+                    data.forecast?.let { forecast ->
+                        item { AnalyticsSectionHeader(title = "PREDICTIVE FORECAST & COGNITIVE STRAIN") }
+                        item {
+                            io.chronicle.usagestats.ui.components.ScreenTimeForecastCard(
+                                forecast = forecast,
+                                dailyGoalMinutes = 150
+                            )
+                        }
+                    }
+
+                    // Continuous Doomscroll Radar & 20-20-20 Eye Rest
+                    if (data.doomscrollSessions.isNotEmpty()) {
+                        item { AnalyticsSectionHeader(title = "CONTINUOUS FOCUS & EYE REST") }
+                        item {
+                            io.chronicle.usagestats.ui.components.DoomscrollRadarCard(
+                                sessions = data.doomscrollSessions
+                            )
+                        }
+                    }
+
+                    // Distraction Cascade & App Habit Loops
+                    if (data.habitLoops.isNotEmpty()) {
+                        item { AnalyticsSectionHeader(title = "DISTRACTION CASCADE & HABIT LOOPS") }
+                        item {
+                            io.chronicle.usagestats.ui.components.DistractionCascadeCard(
+                                habitLoops = data.habitLoops
+                            )
+                        }
+                    }
+
                     // App vs App Comparison Card
                     if (data.apps.size >= 2) {
                         item { AnalyticsSectionHeader(title = stringResource(R.string.section_app_comparison)) }

@@ -1,6 +1,7 @@
 package io.chronicle.usagestats.ui.datausage
 
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,6 +15,8 @@ import io.chronicle.usagestats.domain.model.DataPeriod
 import io.chronicle.usagestats.domain.model.DataSortOrder
 import io.chronicle.usagestats.domain.model.NetworkTypeFilter
 import io.chronicle.usagestats.domain.model.UserSettings
+import io.chronicle.usagestats.domain.usecase.ExportDataImageUseCase
+import io.chronicle.usagestats.domain.usecase.ExportDataPdfUseCase
 import io.chronicle.usagestats.domain.usecase.GetDataUsageUseCase
 import io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +24,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
@@ -30,6 +34,8 @@ import javax.inject.Inject
 class DataUsageViewModel @Inject constructor(
     private val getDataUsageUseCase: GetDataUsageUseCase,
     private val syncDataUsageUseCase: SyncDataUsageUseCase,
+    private val exportDataPdfUseCase: ExportDataPdfUseCase,
+    private val exportDataImageUseCase: ExportDataImageUseCase,
     private val userPreferencesRepository: UserPreferencesRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
@@ -45,6 +51,9 @@ class DataUsageViewModel @Inject constructor(
 
     private val _isRefreshing = MutableStateFlow(false)
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
+
+    private val _isExporting = MutableStateFlow(false)
+    val isExporting: StateFlow<Boolean> = _isExporting.asStateFlow()
 
     private val _hasPermission = MutableStateFlow(PermissionHelper.hasUsageStatsPermission(context))
     val hasPermission: StateFlow<Boolean> = _hasPermission.asStateFlow()
@@ -99,6 +108,10 @@ class DataUsageViewModel @Inject constructor(
         _filter.value = _filter.value.copy(searchQuery = query)
     }
 
+    fun selectHour(hour: Int?) {
+        _filter.value = _filter.value.copy(selectedHour = hour)
+    }
+
     fun navigatePrevious() {
         val current = DateTimeUtils.toZonedDateTime(_referenceDate.value)
         val newDate = when (_selectedPeriod.value) {
@@ -140,12 +153,7 @@ class DataUsageViewModel @Inject constructor(
                         val end = DateTimeUtils.getEndOfWeek(_referenceDate.value)
                         syncDataUsageUseCase.syncRange(start, end)
                     }
-                    DataPeriod.MONTH -> {
-                        val start = DateTimeUtils.getStartOfMonth(_referenceDate.value)
-                        val end = DateTimeUtils.getEndOfMonth(_referenceDate.value)
-                        syncDataUsageUseCase.syncRange(start, end)
-                    }
-                    DataPeriod.BILLING_CYCLE -> {
+                    DataPeriod.MONTH, DataPeriod.BILLING_CYCLE -> {
                         val start = DateTimeUtils.getStartOfMonth(_referenceDate.value)
                         val end = DateTimeUtils.getEndOfMonth(_referenceDate.value)
                         syncDataUsageUseCase.syncRange(start, end)
@@ -154,6 +162,44 @@ class DataUsageViewModel @Inject constructor(
             } catch (_: Exception) {
             } finally {
                 _isRefreshing.value = false
+            }
+        }
+    }
+
+    fun exportPdf(startDate: Long, endDate: Long, onResult: (Uri?) -> Unit) {
+        viewModelScope.launch {
+            _isExporting.value = true
+            try {
+                val summary = dataSummary.value
+                if (summary != null) {
+                    val result = exportDataPdfUseCase.execute(summary, startDate, endDate)
+                    onResult(result.getOrNull())
+                } else {
+                    onResult(null)
+                }
+            } catch (_: Exception) {
+                onResult(null)
+            } finally {
+                _isExporting.value = false
+            }
+        }
+    }
+
+    fun exportImage(startDate: Long, endDate: Long, saveToGallery: Boolean, onResult: (Uri?) -> Unit) {
+        viewModelScope.launch {
+            _isExporting.value = true
+            try {
+                val summary = dataSummary.value
+                if (summary != null) {
+                    val result = exportDataImageUseCase.execute(summary, startDate, endDate, saveToGallery)
+                    onResult(result.getOrNull())
+                } else {
+                    onResult(null)
+                }
+            } catch (_: Exception) {
+                onResult(null)
+            } finally {
+                _isExporting.value = false
             }
         }
     }

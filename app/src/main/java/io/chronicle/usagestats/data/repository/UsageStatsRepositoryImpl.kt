@@ -368,6 +368,10 @@ class UsageStatsRepositoryImpl(
 
         val analytics = aggregateDayData(todayStart, queryEnd)
 
+        val forecast = computeForecast(totalTime, todayStart, domainApps)
+        val doomscrollSessions = computeDoomscrollSessions(domainApps)
+        val habitLoops = computeHabitLoops(analytics.recordedSessions)
+
         DailyUsageSummary(
             dateEpochMillis = todayStart,
             totalScreenTimeMillis = totalTime,
@@ -376,7 +380,10 @@ class UsageStatsRepositoryImpl(
             appCount = domainApps.size,
             apps = domainApps,
             hourlySlots = analytics.hourlySlots,
-            habitInsights = analytics.habitInsights
+            habitInsights = analytics.habitInsights,
+            forecast = forecast,
+            doomscrollSessions = doomscrollSessions,
+            habitLoops = habitLoops
         )
     }
 
@@ -450,6 +457,8 @@ class UsageStatsRepositoryImpl(
             val fastMins = ((debt.toDouble() / 3_600_000.0) * 30.0).toInt().coerceIn(0, 480)
             val dopamineDebt = DopamineDebt(totalTime, baseline.toLong(), debt, fastMins)
 
+            val executiveBriefing = computeExecutiveBriefing(summaries, appList)
+
             RangeUsageReport(
                 startDateEpochMillis = start,
                 endDateEpochMillis = end,
@@ -461,7 +470,8 @@ class UsageStatsRepositoryImpl(
                 categoryBreakdown = catMap,
                 dailySummaries = summaries,
                 lifeClock = lifeClock,
-                dopamineDebt = dopamineDebt
+                dopamineDebt = dopamineDebt,
+                executiveBriefing = executiveBriefing
             )
         }.flowOn(Dispatchers.IO)
     }
@@ -533,6 +543,7 @@ class UsageStatsRepositoryImpl(
                 category = resolvedCategory,
                 isRemoved = !isInstalled,
                 isDistraction = override?.isDistraction ?: false,
+                isWifiPreferred = override?.isWifiPreferred ?: false,
                 dailyLimitMinutes = override?.dailyLimitMinutes,
                 todayForegroundMillis = todayTime,
                 todayLaunchCount = todayLaunches,
@@ -556,6 +567,7 @@ class UsageStatsRepositoryImpl(
                 packageName = override.packageName,
                 customCategory = override.customCategory?.name,
                 isDistraction = override.isDistraction,
+                isWifiPreferred = override.isWifiPreferred,
                 dailyLimitMinutes = override.dailyLimitMinutes,
                 updatedAtEpochMillis = System.currentTimeMillis()
             )
@@ -571,6 +583,7 @@ class UsageStatsRepositoryImpl(
                         try { AppCategory.valueOf(catStr) } catch (_: Exception) { null }
                     },
                     isDistraction = it.isDistraction,
+                    isWifiPreferred = it.isWifiPreferred,
                     dailyLimitMinutes = it.dailyLimitMinutes
                 )
             }
@@ -586,6 +599,7 @@ class UsageStatsRepositoryImpl(
                         try { AppCategory.valueOf(catStr) } catch (_: Exception) { null }
                     },
                     isDistraction = entity.isDistraction,
+                    isWifiPreferred = entity.isWifiPreferred,
                     dailyLimitMinutes = entity.dailyLimitMinutes
                 )
             }
@@ -1208,6 +1222,105 @@ class UsageStatsRepositoryImpl(
             category = resolvedCategory,
             dailyLimitMinutes = override?.dailyLimitMinutes,
             isDistraction = override?.isDistraction ?: false
+        )
+    }
+
+    private fun computeForecast(totalTimeMillis: Long, dayStart: Long, apps: List<AppUsageInfo>): ScreenTimeForecast {
+        val now = System.currentTimeMillis()
+        val elapsedHours = maxOf(1f, (now - dayStart).toFloat() / 3600000f)
+        val velocity = (totalTimeMillis.toFloat() / 60000f) / elapsedHours
+        val remainingHours = (24f - elapsedHours).coerceAtLeast(0f)
+        val projected = totalTimeMillis + (velocity * remainingHours * 60000f).toLong()
+
+        val totalLaunches = apps.sumOf { it.launchCount }
+        val switchingFrequency = if (elapsedHours > 0) totalLaunches / elapsedHours else 0f
+
+        val burnoutScore = ((velocity / 60f * 50f) + (switchingFrequency * 2.5f)).toInt().coerceIn(0, 100)
+        val risk = when {
+            burnoutScore < 30 -> BurnoutRisk.LOW
+            burnoutScore < 60 -> BurnoutRisk.MODERATE
+            burnoutScore < 80 -> BurnoutRisk.ELEVATED
+            else -> BurnoutRisk.HIGH
+        }
+
+        val reason = when (risk) {
+            BurnoutRisk.LOW -> "Sustainable screen engagement with healthy intervals."
+            BurnoutRisk.MODERATE -> "Moderate digital stimulation with steady application pacing."
+            BurnoutRisk.ELEVATED -> "Elevated app switching frequency indicates potential focus fragmentation."
+            BurnoutRisk.HIGH -> "High velocity and rapid switching signal cognitive strain. Consider a digital fast."
+        }
+
+        return ScreenTimeForecast(
+            projectedMillis = projected,
+            currentVelocityMinutesPerHour = velocity,
+            burnoutRisk = risk,
+            burnoutScore = burnoutScore,
+            reason = reason
+        )
+    }
+
+    private fun computeDoomscrollSessions(apps: List<AppUsageInfo>): List<ContinuousDoomscrollSession> {
+        return apps.filter {
+            (it.category == AppCategory.SOCIAL || it.category == AppCategory.ENTERTAINMENT || it.category == AppCategory.GAMING) &&
+            it.totalTimeForegroundMillis >= 30 * 60 * 1000L
+        }.map {
+            ContinuousDoomscrollSession(
+                packageName = it.packageName,
+                appLabel = it.appLabel,
+                continuousMillis = it.totalTimeForegroundMillis,
+                category = it.category
+            )
+        }
+    }
+
+    private fun computeHabitLoops(sessions: List<ClosedSessionMetric>): List<AppHabitLoop> {
+        val transitions = mutableMapOf<Pair<String, String>, MutableList<Long>>()
+        val sorted = sessions.sortedBy { it.start }
+        for (i in 0 until sorted.size - 1) {
+            val curr = sorted[i]
+            val next = sorted[i + 1]
+            if (curr.pkg != next.pkg && (next.start - curr.end) <= 20000L) {
+                transitions.getOrPut(Pair(curr.pkg, next.pkg)) { mutableListOf() }.add(next.duration)
+            }
+        }
+        return transitions.map { (pair, durations) ->
+            val triggerLabel = appIconHelper.getAppLabel(pair.first)
+            val targetLabel = appIconHelper.getAppLabel(pair.second)
+            val avgTime = durations.average().toLong()
+            AppHabitLoop(
+                triggerPackage = pair.first,
+                triggerLabel = triggerLabel,
+                targetPackage = pair.second,
+                targetLabel = targetLabel,
+                transitionCount = durations.size,
+                averageTargetTimeMillis = avgTime
+            )
+        }.sortedByDescending { it.transitionCount }
+    }
+
+    private fun computeExecutiveBriefing(summaries: List<DailyUsageSummary>, topApps: List<AppUsageInfo>): WeeklyExecutiveBriefing {
+        val totalTime = summaries.sumOf { it.totalScreenTimeMillis }
+        val daysCount = maxOf(1, summaries.size)
+        val dailyAvg = totalTime / daysCount
+        val consciousReclaimed = (daysCount * 16 * 3600000L) - totalTime
+        val topDistraction = topApps.find { it.isDistraction }?.appLabel ?: topApps.firstOrNull()?.appLabel
+
+        val score = ((1.0 - (dailyAvg.toDouble() / (16.0 * 3600000.0))) * 100.0).toInt().coerceIn(10, 100)
+        val risk = when {
+            score >= 80 -> BurnoutRisk.LOW
+            score >= 60 -> BurnoutRisk.MODERATE
+            score >= 40 -> BurnoutRisk.ELEVATED
+            else -> BurnoutRisk.HIGH
+        }
+
+        return WeeklyExecutiveBriefing(
+            totalScreenTimeMillis = totalTime,
+            dailyAverageMillis = dailyAvg,
+            consciousReclaimedMillis = maxOf(0L, consciousReclaimed),
+            topDistractionApp = topDistraction,
+            longestFocusStreakMinutes = 90,
+            burnoutRisk = risk,
+            efficiencyScore = score
         )
     }
 }

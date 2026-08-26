@@ -597,7 +597,9 @@ fun SettingsScreen(
         }
 
         item {
-            val formattedMb = if (settings.dailyDataBudgetMb >= 1024) {
+            val formattedMb = if (settings.dailyDataBudgetMb <= 0) {
+                "No Limit"
+            } else if (settings.dailyDataBudgetMb >= 1024) {
                 String.format(java.util.Locale.ENGLISH, "%.1f GB", settings.dailyDataBudgetMb / 1024f)
             } else {
                 "${settings.dailyDataBudgetMb} MB"
@@ -610,9 +612,10 @@ fun SettingsScreen(
         }
 
         item {
+            val formattedGb = if (settings.monthlyDataBudgetGb <= 0) "No Limit" else "${settings.monthlyDataBudgetGb} GB"
             SettingsClickRow(
                 title = stringResource(R.string.settings_monthly_data_budget),
-                value = "${settings.monthlyDataBudgetGb} GB",
+                value = formattedGb,
                 onClick = { showMonthlyDataBudgetDialog = true }
             )
         }
@@ -631,6 +634,15 @@ fun SettingsScreen(
                 description = stringResource(R.string.settings_data_alerts_desc),
                 checked = settings.dataAlertsEnabled,
                 onCheckedChange = { viewModel.setDataAlertsEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = "Live Network Speed Meter",
+                description = "Shows real-time download and upload speed in the notification shade",
+                checked = settings.liveNetworkSpeedMeterEnabled,
+                onCheckedChange = { viewModel.setLiveNetworkSpeedMeterEnabled(it, context) }
             )
         }
 
@@ -905,8 +917,17 @@ private fun DailyDataBudgetDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var sliderValue by remember { mutableFloatStateOf(initialMb.toFloat()) }
-    val currentMb = sliderValue.roundToInt()
+    var currentMb by remember { mutableStateOf(initialMb) }
+    val presets = listOf(
+        0 to "No Limit",
+        512 to "500 MB",
+        1024 to "1.0 GB",
+        1536 to "1.5 GB",
+        2048 to "2.0 GB",
+        2560 to "2.5 GB",
+        3072 to "3.0 GB",
+        5120 to "5.0 GB"
+    )
 
     ChronicleDialog(
         title = stringResource(R.string.settings_daily_data_budget),
@@ -917,7 +938,9 @@ private fun DailyDataBudgetDialog(
         onSecondaryClick = onDismiss,
         content = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                val formatted = if (currentMb >= 1024) {
+                val formatted = if (currentMb <= 0) {
+                    "No Daily Quota"
+                } else if (currentMb >= 1024) {
                     String.format(java.util.Locale.ENGLISH, "%.1f GB", currentMb / 1024f)
                 } else {
                     "$currentMb MB"
@@ -928,13 +951,45 @@ private fun DailyDataBudgetDialog(
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Slider(
-                    value = sliderValue,
-                    onValueChange = { sliderValue = it },
-                    valueRange = 256f..5120f,
-                    steps = 18
-                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Presets FlowRow
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    presets.forEach { (mb, label) ->
+                        val isSelected = currentMb == mb
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { currentMb = mb },
+                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (currentMb > 0) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Slider(
+                        value = currentMb.toFloat().coerceIn(256f, 5120f),
+                        onValueChange = { currentMb = it.roundToInt() },
+                        valueRange = 256f..5120f,
+                        steps = 18
+                    )
+                }
             }
         }
     )
@@ -946,8 +1001,17 @@ private fun MonthlyDataBudgetDialog(
     onDismiss: () -> Unit,
     onConfirm: (Int) -> Unit
 ) {
-    var sliderValue by remember { mutableFloatStateOf(initialGb.toFloat()) }
-    val currentGb = sliderValue.roundToInt()
+    var currentGb by remember { mutableStateOf(initialGb) }
+    val presets = listOf(
+        0 to "No Limit",
+        10 to "10 GB",
+        25 to "25 GB",
+        50 to "50 GB",
+        75 to "75 GB",
+        100 to "100 GB",
+        150 to "150 GB",
+        200 to "200 GB"
+    )
 
     ChronicleDialog(
         title = stringResource(R.string.settings_monthly_data_budget),
@@ -958,19 +1022,51 @@ private fun MonthlyDataBudgetDialog(
         onSecondaryClick = onDismiss,
         content = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                val formatted = if (currentGb <= 0) "No Monthly Quota" else "$currentGb GB"
                 Text(
-                    text = "$currentGb GB",
+                    text = formatted,
                     style = MaterialTheme.typography.headlineMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold
                 )
-                Spacer(modifier = Modifier.height(16.dp))
-                Slider(
-                    value = sliderValue,
-                    onValueChange = { sliderValue = it },
-                    valueRange = 5f..200f,
-                    steps = 38
-                )
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                FlowRow(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    presets.forEach { (gb, label) ->
+                        val isSelected = currentGb == gb
+                        Surface(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable { currentGb = gb },
+                            color = if (isSelected) MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)
+                            else MaterialTheme.colorScheme.surfaceVariant,
+                            shape = RoundedCornerShape(8.dp)
+                        ) {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+
+                if (currentGb > 0) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    Slider(
+                        value = currentGb.toFloat().coerceIn(5f, 200f),
+                        onValueChange = { currentGb = it.roundToInt() },
+                        valueRange = 5f..200f,
+                        steps = 38
+                    )
+                }
             }
         }
     )

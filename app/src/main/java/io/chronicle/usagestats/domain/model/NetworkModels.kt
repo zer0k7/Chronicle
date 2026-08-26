@@ -33,7 +33,43 @@ data class DataUsageInfo(
     val totalBytes: Long = wifiTotalBytes + mobileTotalBytes,
     val isRemoved: Boolean = false,
     val isHotspot: Boolean = false,
+    val isWifiPreferred: Boolean = false,
     val category: AppCategory = AppCategory.OTHER
+)
+
+data class HourlyDataPoint(
+    val hour: Int, // 0..23
+    val wifiBytes: Long = 0L,
+    val mobileBytes: Long = 0L,
+    val totalBytes: Long = wifiBytes + mobileBytes
+)
+
+data class DailyDataPoint(
+    val dateEpochMillis: Long,
+    val dayLabel: String, // e.g. "Mon 24" or "24 Aug"
+    val wifiBytes: Long = 0L,
+    val mobileBytes: Long = 0L,
+    val totalBytes: Long = wifiBytes + mobileBytes
+)
+
+data class CategoryDataShare(
+    val category: AppCategory,
+    val totalBytes: Long,
+    val percentage: Float
+)
+
+data class SleepDataLeakInfo(
+    val app: DataUsageInfo,
+    val sleepBytes: Long,
+    val percentageOfNight: Float
+)
+
+data class DataDepletionForecast(
+    val burnRateBytesPerHour: Long,
+    val projectedDepletionEpochMillis: Long?,
+    val isAtRiskOfDepletion: Boolean,
+    val percentOfQuotaBurned: Int,
+    val statusMessage: String
 )
 
 data class DailyDataUsageSummary(
@@ -45,8 +81,14 @@ data class DailyDataUsageSummary(
     val totalMobileTxBytes: Long = 0L,
     val totalMobileBytes: Long = totalMobileRxBytes + totalMobileTxBytes,
     val totalHotspotBytes: Long = 0L,
-    val grandTotalBytes: Long = totalWifiBytes + totalMobileBytes + totalHotspotBytes,
+    val grandTotalBytes: Long = totalWifiBytes + totalMobileBytes,
     val appUsageList: List<DataUsageInfo> = emptyList(),
+    val hourlyDataPoints: List<HourlyDataPoint> = emptyList(),
+    val multiDayDataPoints: List<DailyDataPoint> = emptyList(),
+    val categoryShares: List<CategoryDataShare> = emptyList(),
+    val sleepDataLeaks: List<SleepDataLeakInfo> = emptyList(),
+    val depletionForecast: DataDepletionForecast? = null,
+    val totalSleepBytes: Long = 0L,
     val topWifiApp: DataUsageInfo? = null,
     val topMobileApp: DataUsageInfo? = null
 )
@@ -54,5 +96,6 @@ data class DailyDataUsageSummary(
 data class DataFilter(
     val searchQuery: String = "",
     val networkType: NetworkTypeFilter = NetworkTypeFilter.ALL,
-    val sortOrder: DataSortOrder = DataSortOrder.TOTAL_DESC
+    val sortOrder: DataSortOrder = DataSortOrder.TOTAL_DESC,
+    val selectedHour: Int? = null
 )

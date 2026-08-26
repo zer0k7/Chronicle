@@ -86,5 +86,6 @@ data class UserSettings(
     val dailyDataBudgetMb: Int = 2048,
     val monthlyDataBudgetGb: Int = 50,
     val billingCycleStartDay: Int = 1,
-    val dataAlertsEnabled: Boolean = true
+    val dataAlertsEnabled: Boolean = true,
+    val liveNetworkSpeedMeterEnabled: Boolean = false
 )

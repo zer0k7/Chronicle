@@ -154,6 +154,22 @@ object AppModule {
 
     @Provides
     @Singleton
+    fun provideExportDataPdfUseCase(
+        @ApplicationContext context: Context
+    ): io.chronicle.usagestats.domain.usecase.ExportDataPdfUseCase {
+        return io.chronicle.usagestats.domain.usecase.ExportDataPdfUseCase(context)
+    }
+
+    @Provides
+    @Singleton
+    fun provideExportDataImageUseCase(
+        @ApplicationContext context: Context
+    ): io.chronicle.usagestats.domain.usecase.ExportDataImageUseCase {
+        return io.chronicle.usagestats.domain.usecase.ExportDataImageUseCase(context)
+    }
+
+    @Provides
+    @Singleton
     fun provideAppUpdateManager(
         @ApplicationContext context: Context
     ): io.chronicle.usagestats.core.updater.AppUpdateManager {

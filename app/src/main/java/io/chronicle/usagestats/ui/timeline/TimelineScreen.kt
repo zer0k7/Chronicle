@@ -316,6 +316,33 @@ fun TimelineScreen(
                             }
                         }
                     }
+
+                    val totalTime = data.dailySummaries.sumOf { it.totalScreenTimeMillis }
+                    val daysCount = maxOf(1, data.dailySummaries.size)
+                    val dailyAvg = totalTime / daysCount
+                    val consciousReclaimed = maxOf(0L, (daysCount * 16 * 3600000L) - totalTime)
+                    val topDistraction = data.topApps.find { it.isDistraction }?.appLabel ?: data.topApps.firstOrNull()?.appLabel
+                    val score = ((1.0 - (dailyAvg.toDouble() / (16.0 * 3600000.0))) * 100.0).toInt().coerceIn(10, 100)
+                    val risk = when {
+                        score >= 80 -> io.chronicle.usagestats.domain.model.BurnoutRisk.LOW
+                        score >= 60 -> io.chronicle.usagestats.domain.model.BurnoutRisk.MODERATE
+                        score >= 40 -> io.chronicle.usagestats.domain.model.BurnoutRisk.ELEVATED
+                        else -> io.chronicle.usagestats.domain.model.BurnoutRisk.HIGH
+                    }
+                    val briefing = io.chronicle.usagestats.domain.model.WeeklyExecutiveBriefing(
+                        totalScreenTimeMillis = totalTime,
+                        dailyAverageMillis = dailyAvg,
+                        consciousReclaimedMillis = consciousReclaimed,
+                        topDistractionApp = topDistraction,
+                        longestFocusStreakMinutes = 90,
+                        burnoutRisk = risk,
+                        efficiencyScore = score
+                    )
+                    item {
+                        io.chronicle.usagestats.ui.components.WeeklyExecutiveBriefingCard(
+                            briefing = briefing
+                        )
+                    }
                 }
 
                 // 4. Most Used Apps Header

@@ -158,6 +158,17 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.updateDataAlertsEnabled(enabled) }
     }
 
+    fun setLiveNetworkSpeedMeterEnabled(enabled: Boolean, context: Context) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateLiveNetworkSpeedMeterEnabled(enabled)
+            if (enabled) {
+                io.chronicle.usagestats.service.LiveNetworkSpeedService.start(context)
+            } else {
+                io.chronicle.usagestats.service.LiveNetworkSpeedService.stop(context)
+            }
+        }
+    }
+
     fun clearUsageData(context: Context) {
         viewModelScope.launch(Dispatchers.IO) {
             try {

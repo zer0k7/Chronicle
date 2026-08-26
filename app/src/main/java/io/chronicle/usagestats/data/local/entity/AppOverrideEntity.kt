@@ -10,5 +10,6 @@ data class AppOverrideEntity(
     val customCategory: String? = null,
     val isDistraction: Boolean = false,
     val dailyLimitMinutes: Int? = null,
+    val isWifiPreferred: Boolean = false,
     val updatedAtEpochMillis: Long = System.currentTimeMillis()
 )

@@ -358,6 +358,11 @@
     <!-- Widgets -->
     <string name="widget_goal_desc">Compact daily screen time gauge and goal status indicator.</string>
     <string name="widget_timeline_desc">Overview of daily screen time, active app count, and most used application.</string>
+    <string name="widget_command_center_desc">Complete daily command center with screen time, daily goal gauge, and top 3 apps.</string>
+    <string name="widget_data_desc">Live network telemetry showing daily mobile data, Wi-Fi usage, and quota progress.</string>
+    <string name="widget_zen_desc">Mindful digital detox ring with conscious screen time progress and focus indicators.</string>
+    <string name="widget_habits_desc">Daily pickups, ghost reflex micro-checks, and bedtime doomscroll diagnostics.</string>
+    <string name="widget_pill_desc">Compact at-a-glance pill for screen time and network bandwidth.</string>
 
     <!-- Data & Network Telemetry Suite -->
     <string name="data_title">Network Data</string>

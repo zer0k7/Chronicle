@@ -106,7 +106,10 @@ class NetworkUsageRepositoryImpl @Inject constructor(
             val category = override?.customCategory?.let {
                 runCatching { io.chronicle.usagestats.domain.model.AppCategory.valueOf(it) }.getOrNull()
             } ?: app.category
-            app.copy(category = category)
+            app.copy(
+                category = category,
+                isWifiPreferred = override?.isWifiPreferred ?: false
+            )
         }.filter { app ->
             when (filter.networkType) {
                 NetworkTypeFilter.ALL -> app.totalBytes > 0

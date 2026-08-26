@@ -80,6 +80,7 @@ fun AppDetailBottomSheet(
 
     var selectedCategory by remember { mutableStateOf(appDetail.category) }
     var isDistraction by remember { mutableStateOf(appDetail.isDistraction) }
+    var isWifiPreferred by remember { mutableStateOf(appDetail.isWifiPreferred) }
     var limitMinutesState by remember { mutableFloatStateOf((appDetail.dailyLimitMinutes ?: 0).toFloat()) }
 
     ModalBottomSheet(
@@ -370,6 +371,42 @@ fun AppDetailBottomSheet(
                 }
             }
 
+            // Wi-Fi Preferred Toggle
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(modifier = Modifier.weight(1f)) {
+                        Text(
+                            text = "Wi-Fi Preferred",
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Warns on cellular data to protect your carrier quota",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                    Spacer(modifier = Modifier.width(12.dp))
+                    Switch(
+                        checked = isWifiPreferred,
+                        onCheckedChange = { isWifiPreferred = it },
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+                }
+            }
+
             // Save Action Button
             item {
                 Button(
@@ -380,6 +417,7 @@ fun AppDetailBottomSheet(
                                 packageName = appDetail.packageName,
                                 customCategory = selectedCategory,
                                 isDistraction = isDistraction,
+                                isWifiPreferred = isWifiPreferred,
                                 dailyLimitMinutes = if (limitMins > 0) limitMins else null
                             )
                         )

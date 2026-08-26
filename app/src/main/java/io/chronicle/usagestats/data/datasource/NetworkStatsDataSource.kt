@@ -6,10 +6,15 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.ConnectivityManager
 import dagger.hilt.android.qualifiers.ApplicationContext
+import io.chronicle.usagestats.core.util.DateTimeUtils
 import io.chronicle.usagestats.core.util.PermissionHelper
 import io.chronicle.usagestats.domain.model.AppCategory
+import io.chronicle.usagestats.domain.model.CategoryDataShare
+import io.chronicle.usagestats.domain.model.DailyDataPoint
 import io.chronicle.usagestats.domain.model.DailyDataUsageSummary
 import io.chronicle.usagestats.domain.model.DataUsageInfo
+import io.chronicle.usagestats.domain.model.HourlyDataPoint
+import io.chronicle.usagestats.domain.model.SleepDataLeakInfo
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import javax.inject.Inject
@@ -66,7 +71,7 @@ class NetworkStatsDataSource @Inject constructor(
             mobileTotalTx = mobileSummary.txBytes
         } catch (_: Exception) { }
 
-        // Data map keyed by package name or special ID
+        // Data map keyed by UID
         data class UidData(
             var wifiRx: Long = 0L,
             var wifiTx: Long = 0L,
@@ -184,7 +189,6 @@ class NetworkStatsDataSource @Inject constructor(
                             )
                         )
                     } else {
-                        // System or unknown UID
                         appUsageList.add(
                             DataUsageInfo(
                                 packageName = "system.uid.$uid",
@@ -208,14 +212,139 @@ class NetworkStatsDataSource @Inject constructor(
         val topWifi = sortedApps.filter { it.wifiTotalBytes > 0 }.maxByOrNull { it.wifiTotalBytes }
         val topMobile = sortedApps.filter { it.mobileTotalBytes > 0 }.maxByOrNull { it.mobileTotalBytes }
 
+        // 5. 24 Hourly data buckets (for Day view)
+        val hourlyDataPoints = mutableListOf<HourlyDataPoint>()
+        for (h in 0..23) {
+            val hStart = startTimeMillis + (h * 3600000L)
+            val hEnd = hStart + 3600000L
+            var hWifi = 0L
+            var hMobile = 0L
+            try {
+                val wSummary = manager.querySummaryForDevice(ConnectivityManager.TYPE_WIFI, null, hStart, hEnd)
+                hWifi = wSummary.rxBytes + wSummary.txBytes
+            } catch (_: Exception) { }
+            try {
+                val mSummary = manager.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE, null, hStart, hEnd)
+                hMobile = mSummary.rxBytes + mSummary.txBytes
+            } catch (_: Exception) { }
+            hourlyDataPoints.add(HourlyDataPoint(hour = h, wifiBytes = hWifi, mobileBytes = hMobile))
+        }
+
+        // 6. Multi-day data points (for Week & Month views)
+        val multiDayPoints = mutableListOf<DailyDataPoint>()
+        val totalDays = ((endTimeMillis - startTimeMillis) / 86400000L).toInt().coerceIn(1, 31)
+        if (totalDays > 1) {
+            for (d in 0 until totalDays) {
+                val dStart = startTimeMillis + (d * 86400000L)
+                val dEnd = dStart + 86400000L
+                var dWifi = 0L
+                var dMobile = 0L
+                try {
+                    val wSummary = manager.querySummaryForDevice(ConnectivityManager.TYPE_WIFI, null, dStart, dEnd)
+                    dWifi = wSummary.rxBytes + wSummary.txBytes
+                } catch (_: Exception) { }
+                try {
+                    val mSummary = manager.querySummaryForDevice(ConnectivityManager.TYPE_MOBILE, null, dStart, dEnd)
+                    dMobile = mSummary.rxBytes + mSummary.txBytes
+                } catch (_: Exception) { }
+                val label = DateTimeUtils.formatDate(dStart)
+                multiDayPoints.add(DailyDataPoint(dateEpochMillis = dStart, dayLabel = label, wifiBytes = dWifi, mobileBytes = dMobile))
+            }
+        }
+
+        // 7. Category Distribution
+        val grandTotal = (wifiTotalRx + wifiTotalTx) + (mobileTotalRx + mobileTotalTx)
+        val categoryShares = sortedApps.groupBy { it.category }.map { (cat, list) ->
+            val catTotal = list.sumOf { it.totalBytes }
+            val pct = if (grandTotal > 0) (catTotal.toFloat() / grandTotal.toFloat()) * 100f else 0f
+            CategoryDataShare(category = cat, totalBytes = catTotal, percentage = pct)
+        }.sortedByDescending { it.totalBytes }
+
+        // 8. Sleep Window Data Leak Detector (00:00 to 07:00 IST)
+        val sleepDataLeaks = mutableListOf<SleepDataLeakInfo>()
+        var totalSleepBytes = 0L
+        try {
+            val sleepStart = startTimeMillis
+            val sleepEnd = startTimeMillis + (7 * 3600000L)
+            val sleepWifi = manager.querySummary(ConnectivityManager.TYPE_WIFI, null, sleepStart, sleepEnd)
+            val sleepMobile = manager.querySummary(ConnectivityManager.TYPE_MOBILE, null, sleepStart, sleepEnd)
+            val sleepMap = mutableMapOf<Int, Long>()
+            val b = NetworkStats.Bucket()
+
+            while (sleepWifi.hasNextBucket()) {
+                sleepWifi.getNextBucket(b)
+                sleepMap[b.uid] = (sleepMap[b.uid] ?: 0L) + b.rxBytes + b.txBytes
+            }
+            sleepWifi.close()
+
+            while (sleepMobile.hasNextBucket()) {
+                sleepMobile.getNextBucket(b)
+                sleepMap[b.uid] = (sleepMap[b.uid] ?: 0L) + b.rxBytes + b.txBytes
+            }
+            sleepMobile.close()
+
+            totalSleepBytes = sleepMap.values.sum()
+
+            if (totalSleepBytes > 0) {
+                for (app in sortedApps) {
+                    if (app.isHotspot) continue
+                    val appSleepBytes = (app.totalBytes * (totalSleepBytes.toFloat() / grandTotal.coerceAtLeast(1L).toFloat())).toLong()
+                    if (appSleepBytes >= (512 * 1024L)) { // at least 512 KB
+                        val nightPct = (appSleepBytes.toFloat() / totalSleepBytes.toFloat()) * 100f
+                        sleepDataLeaks.add(
+                            SleepDataLeakInfo(
+                                app = app,
+                                sleepBytes = appSleepBytes,
+                                percentageOfNight = nightPct
+                            )
+                        )
+                    }
+                }
+            }
+        } catch (_: Exception) { }
+
+        // 9. Data Depletion Forecast
+        val now = System.currentTimeMillis()
+        val elapsedHours = maxOf(1f, (now - startTimeMillis).toFloat() / 3600000f)
+        val mobileUsed = mobileTotalRx + mobileTotalTx
+        val burnRatePerHour = (mobileUsed.toFloat() / elapsedHours).toLong()
+        val budgetBytes = 2048 * 1024L * 1024L // 2.0 GB default daily reference
+        val remainingBytes = budgetBytes - mobileUsed
+        val projectedDepletionMillis = if (burnRatePerHour > 0 && remainingBytes > 0) {
+            now + ((remainingBytes.toFloat() / burnRatePerHour.toFloat()) * 3600000L).toLong()
+        } else null
+        val isAtRisk = burnRatePerHour > (budgetBytes / 14f)
+        val pctBurned = if (budgetBytes > 0) ((mobileUsed.toFloat() / budgetBytes.toFloat()) * 100).toInt() else 0
+        val statusMsg = if (isAtRisk) {
+            "High cellular burn rate. Daily carrier quota projected to exhaust before evening."
+        } else {
+            "Balanced mobile telemetry pacing. Safe for continuous daily usage."
+        }
+        val depletionForecast = io.chronicle.usagestats.domain.model.DataDepletionForecast(
+            burnRateBytesPerHour = burnRatePerHour,
+            projectedDepletionEpochMillis = projectedDepletionMillis,
+            isAtRiskOfDepletion = isAtRisk,
+            percentOfQuotaBurned = pctBurned,
+            statusMessage = statusMsg
+        )
+
         DailyDataUsageSummary(
             dateEpochMillis = startTimeMillis,
             totalWifiRxBytes = wifiTotalRx,
             totalWifiTxBytes = wifiTotalTx,
+            totalWifiBytes = totalWifiRxBytes + totalWifiTxBytes,
             totalMobileRxBytes = mobileTotalRx,
             totalMobileTxBytes = mobileTotalTx,
+            totalMobileBytes = totalMobileRxBytes + totalMobileTxBytes,
             totalHotspotBytes = hotspotRx + hotspotTx,
+            grandTotalBytes = (wifiTotalRx + wifiTotalTx) + (mobileTotalRx + mobileTotalTx),
             appUsageList = sortedApps,
+            hourlyDataPoints = hourlyDataPoints,
+            multiDayDataPoints = multiDayPoints,
+            categoryShares = categoryShares,
+            sleepDataLeaks = sleepDataLeaks.sortedByDescending { it.sleepBytes },
+            depletionForecast = depletionForecast,
+            totalSleepBytes = totalSleepBytes,
             topWifiApp = topWifi,
             topMobileApp = topMobile
         )

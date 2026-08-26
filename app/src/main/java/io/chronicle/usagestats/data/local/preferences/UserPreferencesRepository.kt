@@ -58,6 +58,7 @@ class UserPreferencesRepository(private val context: Context) {
         val MONTHLY_DATA_BUDGET_GB = intPreferencesKey("monthly_data_budget_gb")
         val BILLING_CYCLE_START_DAY = intPreferencesKey("billing_cycle_start_day")
         val DATA_ALERTS_ENABLED = booleanPreferencesKey("data_alerts_enabled")
+        val LIVE_NETWORK_SPEED_METER_ENABLED = booleanPreferencesKey("live_network_speed_meter_enabled")
     }
 
     val userSettingsFlow: Flow<UserSettings> = context.dataStore.data
@@ -118,7 +119,8 @@ class UserPreferencesRepository(private val context: Context) {
                 dailyDataBudgetMb = preferences[PreferencesKeys.DAILY_DATA_BUDGET_MB] ?: 2048,
                 monthlyDataBudgetGb = preferences[PreferencesKeys.MONTHLY_DATA_BUDGET_GB] ?: 50,
                 billingCycleStartDay = preferences[PreferencesKeys.BILLING_CYCLE_START_DAY] ?: 1,
-                dataAlertsEnabled = preferences[PreferencesKeys.DATA_ALERTS_ENABLED] ?: true
+                dataAlertsEnabled = preferences[PreferencesKeys.DATA_ALERTS_ENABLED] ?: true,
+                liveNetworkSpeedMeterEnabled = preferences[PreferencesKeys.LIVE_NETWORK_SPEED_METER_ENABLED] ?: false
             )
         }
 
@@ -274,6 +276,12 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateDataAlertsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.DATA_ALERTS_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateLiveNetworkSpeedMeterEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.LIVE_NETWORK_SPEED_METER_ENABLED] = enabled
         }
     }
 }

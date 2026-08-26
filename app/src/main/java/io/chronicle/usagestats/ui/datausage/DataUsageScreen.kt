@@ -1,5 +1,7 @@
 package io.chronicle.usagestats.ui.datausage
 
+import android.content.Intent
+import android.net.Uri
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -15,6 +17,7 @@ import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
@@ -28,25 +31,30 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.CalendarMonth
-import androidx.compose.material.icons.outlined.CellTower
+import androidx.compose.material.icons.outlined.Image
+import androidx.compose.material.icons.outlined.PictureAsPdf
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Security
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SignalCellularAlt
 import androidx.compose.material.icons.outlined.Wifi
 import androidx.compose.material.icons.outlined.WifiTethering
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -56,7 +64,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -77,10 +84,16 @@ import io.chronicle.usagestats.domain.model.UserSettings
 import io.chronicle.usagestats.ui.components.AppIconView
 import io.chronicle.usagestats.ui.components.ChronicleCard
 import io.chronicle.usagestats.ui.components.ChronicleDatePickerDialog
+import io.chronicle.usagestats.ui.components.ChronicleDateRangePickerDialog
+import io.chronicle.usagestats.ui.components.ChronicleSnackbar
+import io.chronicle.usagestats.ui.components.DataAppDetailBottomSheet
+import io.chronicle.usagestats.ui.components.SnackbarType
 import io.chronicle.usagestats.ui.theme.ColorRemoved
 import io.chronicle.usagestats.ui.theme.ColorSuccess
+import kotlinx.coroutines.delay
 import java.util.Locale
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DataUsageScreen(
     viewModel: DataUsageViewModel = hiltViewModel()
@@ -90,14 +103,28 @@ fun DataUsageScreen(
     val referenceDate by viewModel.referenceDate.collectAsStateWithLifecycle()
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val isRefreshing by viewModel.isRefreshing.collectAsStateWithLifecycle()
+    val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
     val hasPermission by viewModel.hasPermission.collectAsStateWithLifecycle()
     val dataSummary by viewModel.dataSummary.collectAsStateWithLifecycle()
     val userSettings by viewModel.userSettings.collectAsStateWithLifecycle()
 
     var showDatePicker by remember { mutableStateOf(false) }
+    var showExportSheet by remember { mutableStateOf(false) }
+    var showCustomRangePicker by remember { mutableStateOf(false) }
+    var selectedAppForDetail by remember { mutableStateOf<DataUsageInfo?>(null) }
+    var snackbarMessage by remember { mutableStateOf<String?>(null) }
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
     LaunchedEffect(Unit) {
         viewModel.checkPermission()
+    }
+
+    LaunchedEffect(snackbarMessage) {
+        if (snackbarMessage != null) {
+            delay(3000)
+            snackbarMessage = null
+        }
     }
 
     if (showDatePicker) {
@@ -111,327 +138,618 @@ fun DataUsageScreen(
         )
     }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-            .windowInsetsPadding(WindowInsets.statusBars)
-            .padding(top = 8.dp)
-    ) {
-        // Top Header
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+    if (showCustomRangePicker) {
+        ChronicleDateRangePickerDialog(
+            initialStartDate = referenceDate - (6 * 86400000L),
+            initialEndDate = referenceDate,
+            onDismissRequest = { showCustomRangePicker = false },
+            onRangeSelected = { start, end ->
+                showCustomRangePicker = false
+                viewModel.exportPdf(start, end) { uri ->
+                    if (uri != null) {
+                        shareUri(context, uri, "application/pdf")
+                    } else {
+                        snackbarMessage = "Failed to export PDF"
+                    }
+                }
+            }
+        )
+    }
+
+    if (showExportSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showExportSheet = false },
+            sheetState = sheetState,
+            containerColor = MaterialTheme.colorScheme.surface,
+            tonalElevation = 6.dp,
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            dragHandle = {
+                Surface(
+                    modifier = Modifier.padding(top = 12.dp, bottom = 8.dp),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                    shape = RoundedCornerShape(2.dp)
+                ) {
+                    Box(modifier = Modifier.size(width = 36.dp, height = 4.dp))
+                }
+            }
         ) {
-            Column {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .windowInsetsPadding(WindowInsets.navigationBars)
+                    .padding(horizontal = 24.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text(
+                    text = "Export Network Telemetry",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                // 1. PDF Dossier Export
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showExportSheet = false
+                            val (start, end) = getPeriodRange(selectedPeriod, referenceDate)
+                            viewModel.exportPdf(start, end) { uri ->
+                                if (uri != null) {
+                                    shareUri(context, uri, "application/pdf")
+                                } else {
+                                    snackbarMessage = "Failed to generate PDF dossier"
+                                }
+                            }
+                        },
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.PictureAsPdf,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "PDF Telemetry Dossier",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Comprehensive vector PDF with tabular Rx/Tx breakdown",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // 2. High-Res Infographic Image
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showExportSheet = false
+                            val (start, end) = getPeriodRange(selectedPeriod, referenceDate)
+                            viewModel.exportImage(start, end, saveToGallery = false) { uri ->
+                                if (uri != null) {
+                                    shareUri(context, uri, "image/png")
+                                } else {
+                                    snackbarMessage = "Failed to generate infographic card"
+                                }
+                            }
+                        },
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.secondary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.Image,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.secondary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Infographic Image",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "1080x1440 shareable telemetry summary card",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                // 3. Custom Date Range Export
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .clickable {
+                            showExportSheet = false
+                            showCustomRangePicker = true
+                        },
+                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
+                    shape = RoundedCornerShape(16.dp)
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.15f),
+                            modifier = Modifier.size(44.dp)
+                        ) {
+                            Box(contentAlignment = Alignment.Center) {
+                                Icon(
+                                    imageVector = Icons.Outlined.CalendarMonth,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                            }
+                        }
+                        Spacer(modifier = Modifier.width(16.dp))
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Custom Range Export",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            Text(
+                                text = "Select any custom start and end date (1d, 2d, 3d, or weeks)",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+        }
+    }
+
+    selectedAppForDetail?.let { app ->
+        DataAppDetailBottomSheet(
+            app = app,
+            grandTotalBytes = dataSummary?.grandTotalBytes ?: 1L,
+            onDismissRequest = { selectedAppForDetail = null }
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(MaterialTheme.colorScheme.background)
+                .windowInsetsPadding(WindowInsets.statusBars)
+                .padding(top = 8.dp)
+        ) {
+            // Top Header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
                 Text(
                     text = stringResource(R.string.data_title),
                     style = MaterialTheme.typography.headlineMedium,
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground
                 )
-            }
 
-            Row {
-                IconButton(
-                    onClick = { showDatePicker = true },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.CalendarMonth,
-                        contentDescription = stringResource(R.string.timeline_date_picker),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
-                IconButton(
-                    onClick = { viewModel.refreshData() },
-                    modifier = Modifier.size(48.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Outlined.Refresh,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-        }
-
-        // Period Filter Chips
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 20.dp, vertical = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            val periods = listOf(
-                DataPeriod.DAY to stringResource(R.string.data_period_day),
-                DataPeriod.WEEK to stringResource(R.string.data_period_week),
-                DataPeriod.MONTH to stringResource(R.string.data_period_month),
-                DataPeriod.BILLING_CYCLE to stringResource(R.string.data_period_cycle)
-            )
-
-            periods.forEach { (period, label) ->
-                FilterChip(
-                    selected = selectedPeriod == period,
-                    onClick = { viewModel.selectPeriod(period) },
-                    label = {
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.labelMedium,
-                            fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(
+                        onClick = { showDatePicker = true },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.CalendarMonth,
+                            contentDescription = stringResource(R.string.timeline_date_picker),
+                            tint = MaterialTheme.colorScheme.primary
                         )
-                    },
-                    colors = FilterChipDefaults.filterChipColors(
-                        selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
-                        selectedLabelColor = MaterialTheme.colorScheme.primary
-                    ),
-                    shape = RoundedCornerShape(12.dp)
-                )
-            }
-        }
-
-        // Date Navigation Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 12.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = { viewModel.navigatePrevious() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-
-            val periodLabel = when (selectedPeriod) {
-                DataPeriod.DAY -> DateTimeUtils.formatDate(referenceDate)
-                DataPeriod.WEEK -> {
-                    val start = DateTimeUtils.getStartOfWeek(referenceDate)
-                    val end = DateTimeUtils.getEndOfWeek(referenceDate)
-                    "${DateTimeUtils.formatDate(start)} – ${DateTimeUtils.formatDate(end)}"
-                }
-                DataPeriod.MONTH -> DateTimeUtils.formatMonth(referenceDate)
-                DataPeriod.BILLING_CYCLE -> {
-                    val zdt = DateTimeUtils.toZonedDateTime(referenceDate)
-                    val cycleDay = userSettings.billingCycleStartDay
-                    "Cycle from Day $cycleDay (${DateTimeUtils.formatMonth(referenceDate)})"
+                    }
+                    IconButton(
+                        onClick = { showExportSheet = true },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Share,
+                            contentDescription = "Export Data",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    IconButton(
+                        onClick = { viewModel.refreshData() },
+                        modifier = Modifier.size(44.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Refresh,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
 
-            Text(
-                text = periodLabel,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onBackground
-            )
-
-            IconButton(
-                onClick = { viewModel.navigateNext() },
-                modifier = Modifier.size(48.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onBackground
-                )
-            }
-        }
-
-        // Sync / Refresh progress
-        AnimatedVisibility(
-            visible = isRefreshing,
-            enter = fadeIn(),
-            exit = fadeOut()
-        ) {
-            LinearProgressIndicator(
+            // Period Filter Chips
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(3.dp),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant
-            )
-        }
-
-        if (!hasPermission) {
-            // Permission Required Banner
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                contentAlignment = Alignment.Center
+                    .padding(horizontal = 20.dp, vertical = 6.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                ChronicleCard(modifier = Modifier.fillMaxWidth()) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                            modifier = Modifier.size(56.dp)
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                Icon(
-                                    imageVector = Icons.Outlined.Security,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(32.dp)
-                                )
-                            }
-                        }
+                val periods = listOf(
+                    DataPeriod.DAY to stringResource(R.string.data_period_day),
+                    DataPeriod.WEEK to stringResource(R.string.data_period_week),
+                    DataPeriod.MONTH to stringResource(R.string.data_period_month),
+                    DataPeriod.BILLING_CYCLE to stringResource(R.string.data_period_cycle)
+                )
 
-                        Text(
-                            text = stringResource(R.string.data_permission_title),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-
-                        Text(
-                            text = stringResource(R.string.data_permission_desc),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-
-                        Button(
-                            onClick = { PermissionHelper.openUsageStatsSettings(context) },
-                            shape = RoundedCornerShape(12.dp)
-                        ) {
-                            Text(text = stringResource(R.string.data_permission_button))
-                        }
-                    }
+                periods.forEach { (period, label) ->
+                    FilterChip(
+                        selected = selectedPeriod == period,
+                        onClick = { viewModel.selectPeriod(period) },
+                        label = {
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = if (selectedPeriod == period) FontWeight.Bold else FontWeight.Normal
+                            )
+                        },
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.18f),
+                            selectedLabelColor = MaterialTheme.colorScheme.primary
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    )
                 }
             }
-        } else {
-            val summary = dataSummary
-            if (summary == null) {
+
+            // Date Navigation Bar
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(
+                    onClick = { viewModel.navigatePrevious() },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+
+                val periodLabel = when (selectedPeriod) {
+                    DataPeriod.DAY -> DateTimeUtils.formatDate(referenceDate)
+                    DataPeriod.WEEK -> {
+                        val start = DateTimeUtils.getStartOfWeek(referenceDate)
+                        val end = DateTimeUtils.getEndOfWeek(referenceDate)
+                        "${DateTimeUtils.formatDate(start)} – ${DateTimeUtils.formatDate(end)}"
+                    }
+                    DataPeriod.MONTH -> DateTimeUtils.formatMonth(referenceDate)
+                    DataPeriod.BILLING_CYCLE -> {
+                        val cycleDay = userSettings.billingCycleStartDay
+                        "Cycle from Day $cycleDay (${DateTimeUtils.formatMonth(referenceDate)})"
+                    }
+                }
+
+                Text(
+                    text = periodLabel,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground
+                )
+
+                IconButton(
+                    onClick = { viewModel.navigateNext() },
+                    modifier = Modifier.size(48.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.AutoMirrored.Outlined.ArrowForward,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onBackground
+                    )
+                }
+            }
+
+            // Sync / Refresh / Export Progress
+            AnimatedVisibility(
+                visible = isRefreshing || isExporting,
+                enter = fadeIn(),
+                exit = fadeOut()
+            ) {
+                LinearProgressIndicator(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(3.dp),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            }
+
+            if (!hasPermission) {
+                // Permission Required Banner
                 Box(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(24.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    // 1. Data Hero Summary Card
-                    item {
-                        DataHeroCard(
-                            summary = summary,
-                            userSettings = userSettings,
-                            selectedPeriod = selectedPeriod
-                        )
-                    }
-
-                    // 2. Hotspot / Tethering Card (if data exists or in Day/Month)
-                    if (summary.totalHotspotBytes > 0) {
-                        item {
-                            HotspotTetheringCard(hotspotBytes = summary.totalHotspotBytes)
-                        }
-                    }
-
-                    // 3. Bandwidth Ratio Bar
-                    if (summary.grandTotalBytes > 0) {
-                        item {
-                            BandwidthRatioCard(summary = summary)
-                        }
-                    }
-
-                    // 4. Network Type Filter Bar
-                    item {
-                        NetworkTypeFilterRow(
-                            selectedType = filter.networkType,
-                            onTypeSelected = { viewModel.setNetworkTypeFilter(it) }
-                        )
-                    }
-
-                    // 5. Search Bar
-                    item {
-                        OutlinedTextField(
-                            value = filter.searchQuery,
-                            onValueChange = { viewModel.setSearchQuery(it) },
-                            modifier = Modifier.fillMaxWidth(),
-                            placeholder = {
-                                Text(
-                                    text = stringResource(R.string.data_search_hint),
-                                    style = MaterialTheme.typography.bodyMedium
-                                )
-                            },
-                            leadingIcon = {
-                                Icon(
-                                    imageVector = Icons.Outlined.Search,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            },
-                            singleLine = true,
-                            shape = RoundedCornerShape(16.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = MaterialTheme.colorScheme.primary,
-                                unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                            )
-                        )
-                    }
-
-                    // 6. App List Header
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
+                    ChronicleCard(modifier = Modifier.fillMaxWidth()) {
+                        Column(
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                modifier = Modifier.size(56.dp)
+                            ) {
+                                Box(contentAlignment = Alignment.Center) {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Security,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                        modifier = Modifier.size(32.dp)
+                                    )
+                                }
+                            }
+
                             Text(
-                                text = "Applications (${summary.appUsageList.size})",
+                                text = stringResource(R.string.data_permission_title),
                                 style = MaterialTheme.typography.titleMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = MaterialTheme.colorScheme.onBackground
+                                color = MaterialTheme.colorScheme.onSurface
                             )
+
+                            Text(
+                                text = stringResource(R.string.data_permission_desc),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+
+                            Button(
+                                onClick = { PermissionHelper.openUsageStatsSettings(context) },
+                                shape = RoundedCornerShape(12.dp)
+                            ) {
+                                Text(text = stringResource(R.string.data_permission_button))
+                            }
                         }
                     }
-
-                    // 7. App Rows
-                    val maxBytes = summary.appUsageList.firstOrNull()?.totalBytes ?: 1L
-                    if (summary.appUsageList.isEmpty()) {
+                }
+            } else {
+                val summary = dataSummary
+                if (summary == null) {
+                    Box(
+                        modifier = Modifier.fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(horizontal = 20.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // 1. Data Hero Summary Card (Correct mathematical totals)
                         item {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 24.dp),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.data_no_records),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                            DataHeroCard(
+                                summary = summary,
+                                userSettings = userSettings,
+                                selectedPeriod = selectedPeriod
+                            )
+                        }
+
+                        // 1b. Carrier Quota Depletion Forecast (Day view & budget enabled)
+                        if (selectedPeriod == DataPeriod.DAY && summary.depletionForecast != null && userSettings.dailyDataBudgetMb > 0) {
+                            item {
+                                DataDepletionForecastCard(
+                                    forecast = summary.depletionForecast
                                 )
                             }
                         }
-                    } else {
-                        items(summary.appUsageList) { app ->
-                            AppDataRow(
-                                app = app,
-                                maxBytes = maxBytes,
-                                grandTotalBytes = summary.grandTotalBytes
+
+                        // 2. 24-Hour Hourly Network Bar Chart (Day view)
+                        if (selectedPeriod == DataPeriod.DAY && summary.hourlyDataPoints.isNotEmpty()) {
+                            item {
+                                HourlyDataBarChart(
+                                    hourlyDataPoints = summary.hourlyDataPoints,
+                                    selectedHour = filter.selectedHour,
+                                    onHourSelected = { viewModel.selectHour(it) }
+                                )
+                            }
+                        }
+
+                        // 3. Multi-Day Historical Bar Chart (Week/Month views)
+                        if (selectedPeriod != DataPeriod.DAY && summary.multiDayDataPoints.isNotEmpty()) {
+                            item {
+                                WeeklyDataBarChart(
+                                    multiDayDataPoints = summary.multiDayDataPoints
+                                )
+                            }
+                        }
+
+                        // 4. Category Bandwidth Distribution Bar
+                        if (summary.categoryShares.isNotEmpty()) {
+                            item {
+                                CategoryDataDistributionBar(
+                                    categoryShares = summary.categoryShares
+                                )
+                            }
+                        }
+
+                        // 5. Overnight Sleep Data & Drain Leak Detector (Day view)
+                        if (selectedPeriod == DataPeriod.DAY && summary.sleepDataLeaks.isNotEmpty()) {
+                            item {
+                                SleepDataLeakCard(
+                                    sleepLeaks = summary.sleepDataLeaks,
+                                    totalSleepBytes = summary.totalSleepBytes
+                                )
+                            }
+                        }
+
+                        // 6. Hotspot / Tethering Card (if data exists)
+                        if (summary.totalHotspotBytes > 0) {
+                            item {
+                                HotspotTetheringCard(hotspotBytes = summary.totalHotspotBytes)
+                            }
+                        }
+
+                        // 7. Bandwidth Ratio Bar
+                        if (summary.grandTotalBytes > 0) {
+                            item {
+                                BandwidthRatioCard(summary = summary)
+                            }
+                        }
+
+                        // 8. Network Type Filter Bar
+                        item {
+                            NetworkTypeFilterRow(
+                                selectedType = filter.networkType,
+                                onTypeSelected = { viewModel.setNetworkTypeFilter(it) }
                             )
                         }
-                    }
 
-                    // Bottom navigation padding
-                    item { Spacer(modifier = Modifier.height(88.dp)) }
+                        // 9. Search Bar
+                        item {
+                            OutlinedTextField(
+                                value = filter.searchQuery,
+                                onValueChange = { viewModel.setSearchQuery(it) },
+                                modifier = Modifier.fillMaxWidth(),
+                                placeholder = {
+                                    Text(
+                                        text = stringResource(R.string.data_search_hint),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                },
+                                leadingIcon = {
+                                    Icon(
+                                        imageVector = Icons.Outlined.Search,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                },
+                                singleLine = true,
+                                shape = RoundedCornerShape(16.dp),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = MaterialTheme.colorScheme.primary,
+                                    unfocusedBorderColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                                )
+                            )
+                        }
+
+                        // 10. App List Header
+                        item {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = "Applications (${summary.appUsageList.size})",
+                                    style = MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.Bold,
+                                    color = MaterialTheme.colorScheme.onBackground
+                                )
+                            }
+                        }
+
+                        // 11. App Rows
+                        val maxBytes = summary.appUsageList.firstOrNull()?.totalBytes ?: 1L
+                        if (summary.appUsageList.isEmpty()) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 24.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.data_no_records),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        } else {
+                            items(summary.appUsageList) { app ->
+                                AppDataRow(
+                                    app = app,
+                                    maxBytes = maxBytes,
+                                    grandTotalBytes = summary.grandTotalBytes,
+                                    onClick = { selectedAppForDetail = app }
+                                )
+                            }
+                        }
+
+                        // Bottom navigation padding
+                        item { Spacer(modifier = Modifier.height(88.dp)) }
+                    }
                 }
             }
+        }
+
+        snackbarMessage?.let { msg ->
+            ChronicleSnackbar(
+                message = msg,
+                type = SnackbarType.Info,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 96.dp, start = 16.dp, end = 16.dp)
+            )
         }
     }
 }
@@ -454,6 +772,7 @@ private fun DataHeroCard(
 
             Spacer(modifier = Modifier.height(4.dp))
 
+            // Grand Total strictly = Mobile Data + Wi-Fi Data
             Text(
                 text = DataSizeUtils.formatBytes(summary.grandTotalBytes),
                 style = MaterialTheme.typography.displaySmall,
@@ -535,7 +854,7 @@ private fun DataHeroCard(
                 }
             }
 
-            // Daily Data Budget Indicator (if Day view)
+            // Daily Data Budget Indicator (if Day view & quota enabled > 0)
             if (selectedPeriod == DataPeriod.DAY && userSettings.dailyDataBudgetMb > 0) {
                 Spacer(modifier = Modifier.height(14.dp))
                 val budgetBytes = userSettings.dailyDataBudgetMb * 1024L * 1024L
@@ -724,10 +1043,14 @@ private fun NetworkTypeFilterRow(
 private fun AppDataRow(
     app: DataUsageInfo,
     maxBytes: Long,
-    grandTotalBytes: Long
+    grandTotalBytes: Long,
+    onClick: () -> Unit
 ) {
     Surface(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .clickable(onClick = onClick),
         shape = RoundedCornerShape(14.dp),
         color = MaterialTheme.colorScheme.surface,
         tonalElevation = 1.dp
@@ -764,14 +1087,30 @@ private fun AppDataRow(
                 Spacer(modifier = Modifier.width(12.dp))
 
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = app.appLabel,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurface,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = app.appLabel,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = if (app.isRemoved) ColorRemoved else MaterialTheme.colorScheme.onSurface,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        if (app.isWifiPreferred) {
+                            Spacer(Modifier.width(6.dp))
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.2f)
+                            ) {
+                                Text(
+                                    text = "Wi-Fi Only",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.tertiary,
+                                    modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
 
                     val pctOfTotal = if (grandTotalBytes > 0) {
                         String.format(Locale.ENGLISH, "%.1f%%", (app.totalBytes.toFloat() / grandTotalBytes.toFloat()) * 100f)
@@ -844,4 +1183,21 @@ private fun AppDataRow(
             }
         }
     }
+}
+
+private fun getPeriodRange(period: DataPeriod, referenceDate: Long): Pair<Long, Long> {
+    return when (period) {
+        DataPeriod.DAY -> referenceDate to DateTimeUtils.getEndOfDay(referenceDate)
+        DataPeriod.WEEK -> DateTimeUtils.getStartOfWeek(referenceDate) to DateTimeUtils.getEndOfWeek(referenceDate)
+        DataPeriod.MONTH, DataPeriod.BILLING_CYCLE -> DateTimeUtils.getStartOfMonth(referenceDate) to DateTimeUtils.getEndOfMonth(referenceDate)
+    }
+}
+
+private fun shareUri(context: android.content.Context, uri: Uri, mimeType: String) {
+    val shareIntent = Intent(Intent.ACTION_SEND).apply {
+        type = mimeType
+        putExtra(Intent.EXTRA_STREAM, uri)
+        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+    }
+    context.startActivity(Intent.createChooser(shareIntent, "Share Network Report"))
 }
