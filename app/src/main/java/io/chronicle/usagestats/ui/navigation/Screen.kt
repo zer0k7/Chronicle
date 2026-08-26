@@ -7,4 +7,5 @@ sealed class Screen(val route: String) {
     object Report : Screen("report")
     object DataUsage : Screen("data_usage")
     object Settings : Screen("settings")
+    object AppLimits : Screen("app_limits")
 }

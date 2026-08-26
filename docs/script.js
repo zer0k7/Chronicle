@@ -7,15 +7,32 @@
   let cachedRelease = null;
   let cachedApkAsset = null;
 
-  function showToast(msg) {
+  let toastTimer = null;
+  let toastFadeTimer = null;
+
+  function showToast(msg, isSuccess = false, duration = 3500) {
     const toast = document.getElementById('toast');
     if (!toast) return;
-    const span = toast.querySelector('span');
+    const span = toast.querySelector('.toast-text') || toast.querySelector('span');
     if (span) span.textContent = msg;
+
+    if (toastTimer) clearTimeout(toastTimer);
+    if (toastFadeTimer) clearTimeout(toastFadeTimer);
+
+    if (isSuccess) {
+      toast.classList.add('success');
+    } else {
+      toast.classList.remove('success');
+    }
+
     toast.classList.add('show');
-    setTimeout(() => {
+
+    toastTimer = setTimeout(() => {
       toast.classList.remove('show');
-    }, 3500);
+      toastFadeTimer = setTimeout(() => {
+        toast.classList.remove('success');
+      }, 350);
+    }, duration);
   }
 
   async function fetchLatestRelease() {
@@ -124,7 +141,7 @@
         }
       }
 
-      showToast('Downloading ' + filename + '...');
+      showToast('Downloading ' + filename + '...', false, 4000);
 
       // Silent hidden iframe download trigger (prevents any redirection or tab opening)
       const iframe = document.createElement('iframe');
@@ -145,9 +162,13 @@
           btn.disabled = false;
         }, 3000);
       }
+
+      setTimeout(() => {
+        showToast('Download started successfully!', true, 2500);
+      }, 1200);
     } catch (err) {
       console.error('Download error:', err);
-      showToast('Download error. Retrying direct link...');
+      showToast('Download error. Please check your connection.', false, 3500);
       if (btn) {
         btn.textContent = 'Download APK';
         btn.disabled = false;

@@ -19,6 +19,7 @@ import androidx.navigation.compose.composable
 import io.chronicle.usagestats.ui.components.ChronicleNavigationRail
 import io.chronicle.usagestats.ui.components.FloatingNavigationBar
 import io.chronicle.usagestats.ui.datausage.DataUsageScreen
+import io.chronicle.usagestats.ui.limits.AppLimitsScreen
 import io.chronicle.usagestats.ui.onboarding.OnboardingScreen
 import io.chronicle.usagestats.ui.report.ReportScreen
 import io.chronicle.usagestats.ui.settings.SettingsScreen
@@ -111,7 +112,18 @@ fun ChronicleNavGraph(
 
                     composable(Screen.Settings.route) {
                         currentRoute = Screen.Settings.route
-                        SettingsScreen()
+                        SettingsScreen(
+                            onNavigateToAppLimits = {
+                                navController.navigate(Screen.AppLimits.route)
+                            }
+                        )
+                    }
+
+                    composable(Screen.AppLimits.route) {
+                        currentRoute = Screen.AppLimits.route
+                        AppLimitsScreen(
+                            onBack = { navController.popBackStack() }
+                        )
                     }
                 }
             }
@@ -170,7 +182,18 @@ fun ChronicleNavGraph(
 
                 composable(Screen.Settings.route) {
                     currentRoute = Screen.Settings.route
-                    SettingsScreen()
+                    SettingsScreen(
+                        onNavigateToAppLimits = {
+                            navController.navigate(Screen.AppLimits.route)
+                        }
+                    )
+                }
+
+                composable(Screen.AppLimits.route) {
+                    currentRoute = Screen.AppLimits.route
+                    AppLimitsScreen(
+                        onBack = { navController.popBackStack() }
+                    )
                 }
             }
 

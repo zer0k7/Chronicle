@@ -175,4 +175,13 @@ object AppModule {
     ): io.chronicle.usagestats.core.updater.AppUpdateManager {
         return io.chronicle.usagestats.core.updater.AppUpdateManager(context)
     }
+
+    @Provides
+    @Singleton
+    fun provideAppLimitRepository(
+        dao: io.chronicle.usagestats.data.local.dao.AppLimitDao,
+        @ApplicationContext context: Context
+    ): io.chronicle.usagestats.domain.repository.AppLimitRepository {
+        return io.chronicle.usagestats.data.repository.AppLimitRepositoryImpl(dao, context)
+    }
 }

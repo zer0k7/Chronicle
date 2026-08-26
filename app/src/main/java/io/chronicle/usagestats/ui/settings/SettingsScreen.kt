@@ -78,6 +78,7 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SettingsScreen(
+    onNavigateToAppLimits: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
@@ -366,6 +367,14 @@ fun SettingsScreen(
                     onClick = { showWeekendGoalDialog = true }
                 )
             }
+        }
+
+        item {
+            SettingsClickRow(
+                title = stringResource(R.string.app_limits_title),
+                value = "",
+                onClick = onNavigateToAppLimits
+            )
         }
 
         // --- Focus Mode ---

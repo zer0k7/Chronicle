@@ -401,12 +401,62 @@
     <string name="settings_data_alerts">High Data Usage Alerts</string>
     <string name="settings_data_alerts_desc">Notify when approaching 90% of daily data quota</string>
 
-    <!-- Home Screen Widgets Labels -->
-    <string name="widget_label_device_unlocks">Device Unlocks</string>
-    <string name="widget_label_ghost_reflex">Ghost Reflex</string>
-    <string name="widget_label_ghost_sub">Micro-checks (&lt;30s)</string>
-    <string name="widget_label_digital_zen">Digital Zen</string>
-    <string name="widget_label_screen_time">Screen Time</string>
-    <string name="widget_label_bandwidth">Bandwidth</string>
+    <!-- App Limits & Iron Discipline Blocker -->
+    <string name="app_limits_title">App Limits</string>
+    <string name="app_limits_subtitle">Hardcore screen time enforcement</string>
+    <string name="app_limits_master_toggle">Enable App Limits</string>
+    <string name="app_limits_master_toggle_desc">Enforce daily time limits with Iron Discipline blocker</string>
+    <string name="app_limits_permission_banner_title">Draw Over Other Apps Permission Required</string>
+    <string name="app_limits_permission_banner_desc">Chronicle requires overlay permission to display the blocker screen when daily limits are reached.</string>
+    <string name="app_limits_permission_button">Grant Overlay Permission</string>
+    <string name="app_limits_section_with_limits">Apps with Limits</string>
+    <string name="app_limits_section_without_limits">Other Applications</string>
+    <string name="app_limits_no_apps_found">No applications found</string>
+    <string name="app_limits_search_placeholder">Search applications…</string>
+    <string name="app_limits_set_limit_title">Set Daily Limit</string>
+    <string name="app_limits_dialog_time_limit">Daily Time Limit</string>
+    <string name="app_limits_dialog_bypass_mode">Bypass Enforcement Mode</string>
+    <string name="app_limits_bypass_none">Iron Discipline (No Bypass)</string>
+    <string name="app_limits_bypass_none_desc">Completely locked until 12:00 AM IST reset.</string>
+    <string name="app_limits_bypass_typing">Cognitive Typing Challenge</string>
+    <string name="app_limits_bypass_typing_desc">Type a 200-character paragraph perfectly without mistakes for 5 minutes access.</string>
+    <string name="app_limits_bypass_math">Strict Math Challenge</string>
+    <string name="app_limits_bypass_math_desc">Solve 5 multi-digit multiplication problems in sequence for 5 minutes access.</string>
+    <string name="app_limits_remove_limit">Remove Limit</string>
+    <string name="app_limits_save_limit">Save Limit</string>
+    <string name="app_limits_time_format_hours_mins">%1$dh %2$dm</string>
+    <string name="app_limits_time_format_mins">%1$d mins</string>
+    <string name="app_limits_active_summary">%1$d active app limits</string>
+    <string name="app_limits_settings_entry">App Limits &amp; Blocker</string>
+    <string name="app_limits_settings_entry_desc">Hardcore app restrictions and cognitive unlock challenges</string>
+
+    <string name="blocker_title">Daily Limit Reached</string>
+    <string name="blocker_subtitle">%1$s has reached its daily time allocation</string>
+    <string name="blocker_used_time">Time used today: %1$s</string>
+    <string name="blocker_limit_time">Daily limit: %1$s</string>
+    <string name="blocker_reset_notice">Limits automatically reset at 12:00 AM IST.</string>
+    <string name="blocker_button_home">Exit to Home Screen</string>
+    <string name="blocker_button_request_time">Emergency 5 Minutes</string>
+    <string name="blocker_locked_message">Iron discipline is active. No exceptions until tomorrow.</string>
+
+    <string name="challenge_typing_title">Focus Typing Challenge</string>
+    <string name="challenge_typing_instruction">Type the text below exactly as shown. Any mistake or typo will reset your progress.</string>
+    <string name="challenge_typing_target_text">Focus is the art of knowing what to ignore. In a world full of digital noise, intentional discipline is the only true superpower that separates conscious living from mindless consumption.</string>
+    <string name="challenge_typing_placeholder">Type here…</string>
+    <string name="challenge_typing_error_reset">Mistake detected. Progress reset.</string>
+    <string name="challenge_typing_success">Challenge completed. 5 minutes granted.</string>
+    <string name="challenge_button_give_up">Give Up &amp; Exit</string>
+
+    <string name="challenge_math_title">Focus Math Challenge</string>
+    <string name="challenge_math_instruction">Solve all 5 complex multiplication problems consecutively. One incorrect answer resets your streak to question 1.</string>
+    <string name="challenge_math_progress">Question %1$d of %2$d</string>
+    <string name="challenge_math_problem">%1$d × %2$d = ?</string>
+    <string name="challenge_math_input_placeholder">Enter answer</string>
+    <string name="challenge_math_submit">Submit Answer</string>
+    <string name="challenge_math_wrong">Incorrect answer. Streak reset to problem 1.</string>
+    <string name="challenge_math_success">All problems solved. 5 minutes granted.</string>
+
+    <string name="limit_monitor_notification_title">Chronicle Focus Guard</string>
+    <string name="limit_monitor_notification_text">App limits are actively enforced</string>
 </resources>
 

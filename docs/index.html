@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Chronicle — Screen Time Tracker</title>
   
   <meta name="description" content="Chronicle — accurate Android screen time tracker. IST-anchored, offline, privacy-first. Free and open source.">
@@ -286,9 +286,12 @@
   </footer>
 
   <!-- Toast Notification element -->
-  <div id="toast" class="toast">
-    <svg viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
-    <span>Download started...</span>
+  <div id="toast" class="toast" role="status" aria-live="polite">
+    <div class="toast-icon-wrap">
+      <svg class="toast-icon toast-icon-spinner" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z"/></svg>
+      <svg class="toast-icon toast-icon-check" viewBox="0 0 24 24"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>
+    </div>
+    <span class="toast-text">Downloading...</span>
   </div>
 
 </body>

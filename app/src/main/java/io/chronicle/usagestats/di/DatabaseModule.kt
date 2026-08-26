@@ -46,4 +46,10 @@ object DatabaseModule {
     fun provideNetworkUsageDao(database: ChronicleDatabase): io.chronicle.usagestats.data.local.dao.NetworkUsageDao {
         return database.networkUsageDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideAppLimitDao(database: ChronicleDatabase): io.chronicle.usagestats.data.local.dao.AppLimitDao {
+        return database.appLimitDao()
+    }
 }
