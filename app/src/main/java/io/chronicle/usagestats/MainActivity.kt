@@ -30,10 +30,20 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appUpdateManager: AppUpdateManager
 
+    private var targetRouteState = androidx.compose.runtime.mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        targetRouteState.value = intent.getStringExtra("target_route")
+    }
+
     @OptIn(ExperimentalMaterial3WindowSizeClassApi::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
+
+        targetRouteState.value = intent.getStringExtra("target_route")
 
         enableEdgeToEdge()
 
@@ -50,6 +60,7 @@ class MainActivity : ComponentActivity() {
                 .collectAsStateWithLifecycle()
             val isUpdateDialogVisible by appUpdateManager.isDialogVisible
                 .collectAsStateWithLifecycle()
+            val targetRoute by targetRouteState
 
             val currentSettings = settings ?: UserSettings(
                 themeMode = ThemeMode.DARK,
@@ -69,7 +80,8 @@ class MainActivity : ComponentActivity() {
                 ChronicleNavGraph(
                     navController = navController,
                     isOnboardingCompleted = currentSettings.isOnboardingCompleted,
-                    widthSizeClass = windowSizeClass.widthSizeClass
+                    widthSizeClass = windowSizeClass.widthSizeClass,
+                    targetRoute = targetRoute
                 )
 
                 // Global in-app update dialog

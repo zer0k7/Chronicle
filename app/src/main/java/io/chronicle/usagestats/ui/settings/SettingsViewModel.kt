@@ -114,6 +114,29 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch { userPreferencesRepository.updateWeekendNotificationsMuted(muted) }
     }
 
+    fun setMiddayNotificationEnabled(enabled: Boolean, context: Context) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateMiddayNotificationEnabled(enabled)
+            if (enabled) {
+                NotificationHelper.scheduleMiddayNotification(context)
+            } else {
+                NotificationHelper.cancelMiddayNotification(context)
+            }
+        }
+    }
+
+    fun setDistractionSurgeAlertEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateDistractionSurgeAlertEnabled(enabled) }
+    }
+
+    fun setBudgetAlertEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateBudgetAlertEnabled(enabled) }
+    }
+
+    fun setNotificationRadarEnabled(enabled: Boolean) {
+        viewModelScope.launch { userPreferencesRepository.updateNotificationRadarEnabled(enabled) }
+    }
+
     // General
     fun setFirstDayOfWeek(day: String) {
         viewModelScope.launch { userPreferencesRepository.updateFirstDayOfWeek(day) }

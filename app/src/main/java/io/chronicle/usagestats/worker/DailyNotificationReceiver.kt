@@ -25,7 +25,8 @@ class DailyNotificationReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        if (intent.action != Constants.ACTION_DAILY_NOTIFICATION) return
+        val action = intent.action ?: return
+        if (action != Constants.ACTION_DAILY_NOTIFICATION && action != Constants.ACTION_MIDDAY_NOTIFICATION) return
 
         val entryPoint = EntryPointAccessors.fromApplication(
             context.applicationContext,
@@ -40,7 +41,8 @@ class DailyNotificationReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val settings = preferencesRepo.userSettingsFlow.first()
-                if (settings.dailyNotificationEnabled) {
+
+                if (action == Constants.ACTION_DAILY_NOTIFICATION && settings.dailyNotificationEnabled) {
                     val summary = usageRepo.getTodaySummary()
                     NotificationHelper.showDailySummaryNotification(
                         context = context,
@@ -50,12 +52,23 @@ class DailyNotificationReceiver : BroadcastReceiver() {
                         weekendNotificationsMuted = settings.weekendNotificationsMuted
                     )
 
-                    // Reschedule for next day
+                    // Reschedule daily summary for next day
                     NotificationHelper.scheduleDailyNotification(
                         context = context,
                         hour = settings.dailyNotificationHour,
                         minute = settings.dailyNotificationMinute
                     )
+                } else if (action == Constants.ACTION_MIDDAY_NOTIFICATION && settings.middayNotificationEnabled) {
+                    val summary = usageRepo.getTodaySummary()
+                    NotificationHelper.showMiddayCheckNotification(
+                        context = context,
+                        totalScreenTimeMillis = summary.totalScreenTimeMillis,
+                        dailyGoalMinutes = settings.dailyGoalMinutes,
+                        topAppLabel = summary.topAppLabel
+                    )
+
+                    // Reschedule midday notification for next day
+                    NotificationHelper.scheduleMiddayNotification(context = context)
                 }
             } catch (_: Exception) {
                 // Silently handle background dispatch failure

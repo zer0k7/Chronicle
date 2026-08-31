@@ -14,7 +14,9 @@ class DailyUsageSyncWorker @AssistedInject constructor(
     @Assisted private val context: Context,
     @Assisted workerParams: WorkerParameters,
     private val syncUsageDataUseCase: SyncUsageDataUseCase,
-    private val syncDataUsageUseCase: io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase
+    private val syncDataUsageUseCase: io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase,
+    private val userPreferencesRepository: io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository,
+    private val usageRepository: io.chronicle.usagestats.domain.repository.UsageRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -26,6 +28,44 @@ class DailyUsageSyncWorker @AssistedInject constructor(
             syncUsageDataUseCase.syncToday()
             syncDataUsageUseCase.syncDate(System.currentTimeMillis())
             io.chronicle.usagestats.ui.widget.ChronicleWidgetUpdater.updateAll(context)
+            io.chronicle.usagestats.service.ChronicleTileUpdater.updateAll(context)
+
+            // Evaluate budget threshold warnings
+            val settings = kotlinx.coroutines.flow.firstOrNull(userPreferencesRepository.userSettingsFlow)
+            if (settings != null) {
+                if (settings.budgetAlertEnabled && settings.dailyGoalMinutes > 0) {
+                    val totalScreenTime = usageRepository.getTodayTotalScreenTimeMillis()
+                    val goalMillis = settings.dailyGoalMinutes * 60 * 1000L
+                    if (totalScreenTime >= goalMillis) {
+                        NotificationHelper.showBudgetThresholdNotification(
+                            context = context,
+                            percentage = 100,
+                            totalDurationMillis = totalScreenTime,
+                            goalMinutes = settings.dailyGoalMinutes
+                        )
+                    } else if (totalScreenTime >= (goalMillis * 0.8).toLong()) {
+                        NotificationHelper.showBudgetThresholdNotification(
+                            context = context,
+                            percentage = 80,
+                            totalDurationMillis = totalScreenTime,
+                            goalMinutes = settings.dailyGoalMinutes
+                        )
+                    }
+                }
+
+                // Ensure alarms are armed
+                if (settings.dailyNotificationEnabled) {
+                    NotificationHelper.scheduleDailyNotification(
+                        context,
+                        settings.dailyNotificationHour,
+                        settings.dailyNotificationMinute
+                    )
+                }
+                if (settings.middayNotificationEnabled) {
+                    NotificationHelper.scheduleMiddayNotification(context)
+                }
+            }
+
             Result.success()
         } catch (_: Exception) {
             Result.retry()

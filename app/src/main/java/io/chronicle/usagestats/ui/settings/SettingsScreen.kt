@@ -467,6 +467,42 @@ fun SettingsScreen(
             )
         }
 
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_notification_midday),
+                description = stringResource(R.string.settings_notification_midday_desc),
+                checked = settings.middayNotificationEnabled,
+                onCheckedChange = { viewModel.setMiddayNotificationEnabled(it, context) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_notification_surge),
+                description = stringResource(R.string.settings_notification_surge_desc),
+                checked = settings.distractionSurgeAlertEnabled,
+                onCheckedChange = { viewModel.setDistractionSurgeAlertEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_notification_budget_warnings),
+                description = stringResource(R.string.settings_notification_budget_warnings_desc),
+                checked = settings.budgetAlertEnabled,
+                onCheckedChange = { viewModel.setBudgetAlertEnabled(it) }
+            )
+        }
+
+        item {
+            SettingsToggleRow(
+                title = stringResource(R.string.settings_notification_radar),
+                description = stringResource(R.string.settings_notification_radar_desc),
+                checked = settings.notificationRadarEnabled,
+                onCheckedChange = { viewModel.setNotificationRadarEnabled(it) }
+            )
+        }
+
         // --- General ---
         item {
             SectionHeader(
@@ -682,6 +718,13 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_permission_storage),
                 isGranted = PermissionHelper.hasStoragePermission(context),
                 onClick = { PermissionHelper.openAppSettings(context) }
+            )
+        }
+        item {
+            PermissionStatusRow(
+                title = stringResource(R.string.settings_notification_radar),
+                isGranted = PermissionHelper.hasNotificationListenerPermission(context),
+                onClick = { PermissionHelper.openNotificationListenerSettings(context) }
             )
         }
 

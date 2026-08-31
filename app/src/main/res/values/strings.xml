@@ -466,5 +466,62 @@
     <string name="widget_label_digital_zen">Digital Zen</string>
     <string name="widget_label_screen_time">Screen Time</string>
     <string name="widget_label_bandwidth">Bandwidth</string>
+
+    <!-- Attention & Notification Radar -->
+    <string name="notification_radar_title">Attention &amp; Notification Radar</string>
+    <string name="notification_radar_subtitle">Telemetry on attention fragmentation, incoming ping spikes, and reflex loops</string>
+    <string name="notification_radar_total_pings">%1$d Pings Today</string>
+    <string name="notification_radar_disruptive_pings">%1$d Disruptive Alerts</string>
+    <string name="notification_radar_score_label">Fragmentation Index</string>
+    <string name="notification_radar_risk_low">Minimal Disruption</string>
+    <string name="notification_radar_risk_moderate">Moderate Fragmentation</string>
+    <string name="notification_radar_risk_elevated">Elevated Restlessness</string>
+    <string name="notification_radar_risk_high">Severe Influx Chaos</string>
+    <string name="notification_radar_hourly_chart_title">24-Hour Ping Density Canvas</string>
+    <string name="notification_radar_hourly_chart_hint">Tap any hour to inspect notification volume</string>
+    <string name="notification_radar_top_disruptors_title">Top Attention Disruptors</string>
+    <string name="notification_radar_bait_switch_title">Bait &amp; Switch Reflex Loops</string>
+    <string name="notification_radar_bait_switch_desc">%1$s ping triggered %2$d reflex unlocks into %3$s</string>
+    <string name="notification_radar_no_events">No incoming notifications recorded for this period.</string>
+    <string name="notification_radar_permission_title">Notification Influx Radar Inactive</string>
+    <string name="notification_radar_permission_desc">Grant Notification Access to analyze ping frequency, detect bait-and-switch loops, and identify attention drainers. All processing is 100% on-device.</string>
+    <string name="notification_radar_grant_button">Enable Notification Radar</string>
+    <string name="notification_radar_service_label">Chronicle Notification Radar</string>
+
+    <!-- Multi-Touchpoint Smart Notifications -->
+    <string name="notification_channel_reality">Midday Check &amp; Reality</string>
+    <string name="notification_channel_reality_desc">Channel for midday pacing and mindfulness check-in notifications.</string>
+    <string name="notification_channel_distraction">Distraction &amp; Radar Alerts</string>
+    <string name="notification_channel_distraction_desc">Channel for notification influx surges and distraction alerts.</string>
+    <string name="notification_midday_title">Midday Check: %1$s Logged</string>
+    <string name="notification_midday_body">Top app: %1$s. You are %2$d%% through your daily budget.</string>
+    <string name="notification_surge_title">Distraction Spike Detected</string>
+    <string name="notification_surge_body">%1$d notifications received in the last hour, primarily from %2$s.</string>
+    <string name="notification_budget_80_title">Approaching Daily Screen Budget (80%%)</string>
+    <string name="notification_budget_80_body">You have used %1$s of your %2$s screen time allowance.</string>
+    <string name="notification_budget_100_title">Daily Screen Time Limit Reached</string>
+    <string name="notification_budget_100_body">You have reached your %1$s screen time limit today.</string>
+
+    <!-- Settings: Smart Notifications -->
+    <string name="settings_notification_midday">Midday Reality Check (14:00 IST)</string>
+    <string name="settings_notification_midday_desc">Midday pacing update comparing current usage against your daily budget.</string>
+    <string name="settings_notification_surge">Distraction Surge Alerts</string>
+    <string name="settings_notification_surge_desc">Instant heads-up when notifications spike (&gt;30 pings/hr).</string>
+    <string name="settings_notification_budget_warnings">Budget Milestone Warnings</string>
+    <string name="settings_notification_budget_warnings_desc">Alerts when crossing 80% and 100% of your daily screen time allowance.</string>
+    <string name="settings_notification_radar">Notification Influx Radar</string>
+    <string name="settings_notification_radar_desc">Track attention disruption, ping density, and bait-and-switch reflex triggers.</string>
+
+    <!-- Quick Settings Tiles -->
+    <string name="tile_screen_time_label">Screen Time</string>
+    <string name="tile_screen_time_on_track">%1$s · On Track</string>
+    <string name="tile_screen_time_budget_pct">%1$s (%2$d%%)</string>
+    <string name="tile_screen_time_exceeded">%1$s · Over Budget</string>
+    <string name="tile_zen_focus_label">Zen Focus</string>
+    <string name="tile_zen_focus_idle">Tap to Focus</string>
+    <string name="tile_zen_focus_active">Active · %1$dm Left</string>
+    <string name="tile_data_burn_label">Data Burn</string>
+    <string name="tile_data_burn_safe">%1$s · Safe</string>
+    <string name="tile_data_burn_high">%1$s · High Burn</string>
 </resources>
 

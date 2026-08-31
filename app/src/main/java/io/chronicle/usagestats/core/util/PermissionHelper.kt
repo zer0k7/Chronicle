@@ -91,4 +91,20 @@ object PermissionHelper {
         }
         context.startActivity(intent)
     }
+
+    fun hasNotificationListenerPermission(context: Context): Boolean {
+        val enabledPackages = androidx.core.app.NotificationManagerCompat.getEnabledListenerPackages(context)
+        return enabledPackages.contains(context.packageName)
+    }
+
+    fun openNotificationListenerSettings(context: Context) {
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        try {
+            context.startActivity(intent)
+        } catch (_: Exception) {
+            openAppSettings(context)
+        }
+    }
 }

@@ -45,6 +45,10 @@ class BootReceiver : BroadcastReceiver() {
                     )
                 }
 
+                if (settings.middayNotificationEnabled) {
+                    NotificationHelper.scheduleMiddayNotification(context = context)
+                }
+
                 val enabledLimitsCount = appLimitDao.getEnabledLimitCount()
                 if (enabledLimitsCount > 0) {
                     AppLimitMonitorService.start(context)

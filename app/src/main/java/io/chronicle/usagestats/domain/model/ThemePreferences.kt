@@ -87,5 +87,10 @@ data class UserSettings(
     val monthlyDataBudgetGb: Int = 50,
     val billingCycleStartDay: Int = 1,
     val dataAlertsEnabled: Boolean = true,
-    val liveNetworkSpeedMeterEnabled: Boolean = false
+    val liveNetworkSpeedMeterEnabled: Boolean = false,
+    // Notification Influx & Smart Pacing Alerts
+    val notificationRadarEnabled: Boolean = true,
+    val middayNotificationEnabled: Boolean = true,
+    val distractionSurgeAlertEnabled: Boolean = true,
+    val budgetAlertEnabled: Boolean = true
 )

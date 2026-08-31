@@ -52,4 +52,10 @@ object DatabaseModule {
     fun provideAppLimitDao(database: ChronicleDatabase): io.chronicle.usagestats.data.local.dao.AppLimitDao {
         return database.appLimitDao()
     }
+
+    @Provides
+    @Singleton
+    fun provideNotificationDao(database: ChronicleDatabase): io.chronicle.usagestats.data.local.dao.NotificationDao {
+        return database.notificationDao()
+    }
 }

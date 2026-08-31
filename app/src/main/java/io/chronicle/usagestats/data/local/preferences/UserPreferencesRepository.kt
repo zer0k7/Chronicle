@@ -59,6 +59,11 @@ class UserPreferencesRepository(private val context: Context) {
         val BILLING_CYCLE_START_DAY = intPreferencesKey("billing_cycle_start_day")
         val DATA_ALERTS_ENABLED = booleanPreferencesKey("data_alerts_enabled")
         val LIVE_NETWORK_SPEED_METER_ENABLED = booleanPreferencesKey("live_network_speed_meter_enabled")
+        // Notification Influx & Smart Pacing Alerts
+        val NOTIFICATION_RADAR_ENABLED = booleanPreferencesKey("notification_radar_enabled")
+        val MIDDAY_NOTIFICATION_ENABLED = booleanPreferencesKey("midday_notification_enabled")
+        val DISTRACTION_SURGE_ALERT_ENABLED = booleanPreferencesKey("distraction_surge_alert_enabled")
+        val BUDGET_ALERT_ENABLED = booleanPreferencesKey("budget_alert_enabled")
     }
 
     val userSettingsFlow: Flow<UserSettings> = context.dataStore.data
@@ -120,7 +125,11 @@ class UserPreferencesRepository(private val context: Context) {
                 monthlyDataBudgetGb = preferences[PreferencesKeys.MONTHLY_DATA_BUDGET_GB] ?: 50,
                 billingCycleStartDay = preferences[PreferencesKeys.BILLING_CYCLE_START_DAY] ?: 1,
                 dataAlertsEnabled = preferences[PreferencesKeys.DATA_ALERTS_ENABLED] ?: true,
-                liveNetworkSpeedMeterEnabled = preferences[PreferencesKeys.LIVE_NETWORK_SPEED_METER_ENABLED] ?: false
+                liveNetworkSpeedMeterEnabled = preferences[PreferencesKeys.LIVE_NETWORK_SPEED_METER_ENABLED] ?: false,
+                notificationRadarEnabled = preferences[PreferencesKeys.NOTIFICATION_RADAR_ENABLED] ?: true,
+                middayNotificationEnabled = preferences[PreferencesKeys.MIDDAY_NOTIFICATION_ENABLED] ?: true,
+                distractionSurgeAlertEnabled = preferences[PreferencesKeys.DISTRACTION_SURGE_ALERT_ENABLED] ?: true,
+                budgetAlertEnabled = preferences[PreferencesKeys.BUDGET_ALERT_ENABLED] ?: true
             )
         }
 
@@ -282,6 +291,30 @@ class UserPreferencesRepository(private val context: Context) {
     suspend fun updateLiveNetworkSpeedMeterEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.LIVE_NETWORK_SPEED_METER_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateNotificationRadarEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.NOTIFICATION_RADAR_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateMiddayNotificationEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.MIDDAY_NOTIFICATION_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateDistractionSurgeAlertEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.DISTRACTION_SURGE_ALERT_ENABLED] = enabled
+        }
+    }
+
+    suspend fun updateBudgetAlertEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.BUDGET_ALERT_ENABLED] = enabled
         }
     }
 }

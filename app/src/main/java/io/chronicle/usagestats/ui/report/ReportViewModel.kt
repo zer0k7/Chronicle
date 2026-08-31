@@ -14,10 +14,12 @@ import io.chronicle.usagestats.domain.model.ExportDateRange
 import io.chronicle.usagestats.domain.model.ExportFormat
 import io.chronicle.usagestats.domain.model.ReportFilter
 import io.chronicle.usagestats.domain.repository.UsageRepository
+import io.chronicle.usagestats.domain.model.NotificationRadarData
 import io.chronicle.usagestats.domain.usecase.ExportCsvUseCase
 import io.chronicle.usagestats.domain.usecase.ExportPdfReportUseCase
 import io.chronicle.usagestats.domain.usecase.ExportReportImageUseCase
 import io.chronicle.usagestats.domain.usecase.GetAppDetailUseCase
+import io.chronicle.usagestats.domain.usecase.GetNotificationRadarUseCase
 import io.chronicle.usagestats.domain.usecase.GetReportUseCase
 import io.chronicle.usagestats.domain.usecase.SaveAppOverrideUseCase
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
@@ -49,6 +51,7 @@ class ReportViewModel @Inject constructor(
     private val exportCsvUseCase: ExportCsvUseCase,
     private val getAppDetailUseCase: GetAppDetailUseCase,
     private val saveAppOverrideUseCase: SaveAppOverrideUseCase,
+    private val getNotificationRadarUseCase: GetNotificationRadarUseCase,
     private val usageRepository: UsageRepository
 ) : ViewModel() {
 
@@ -81,6 +84,12 @@ class ReportViewModel @Inject constructor(
             } else {
                 flowOf(null)
             }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val notificationRadarData: StateFlow<NotificationRadarData?> = _selectedDate
+        .flatMapLatest { date ->
+            getNotificationRadarUseCase(date)
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 

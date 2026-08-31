@@ -90,6 +90,7 @@ fun ReportScreen(
     val filter by viewModel.filter.collectAsStateWithLifecycle()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val selectedAppDetail by viewModel.selectedAppDetail.collectAsStateWithLifecycle()
+    val notificationRadarData by viewModel.notificationRadarData.collectAsStateWithLifecycle()
 
     var showDatePicker by remember { mutableStateOf(false) }
     var showExportSheet by remember { mutableStateOf(false) }
@@ -549,6 +550,16 @@ fun ReportScreen(
                         item {
                             io.chronicle.usagestats.ui.components.DistractionCascadeCard(
                                 habitLoops = data.habitLoops
+                            )
+                        }
+                    }
+
+                    // Attention & Notification Radar
+                    notificationRadarData?.let { radar ->
+                        item { AnalyticsSectionHeader(title = "ATTENTION & NOTIFICATION RADAR") }
+                        item {
+                            io.chronicle.usagestats.ui.components.NotificationRadarCard(
+                                data = radar
                             )
                         }
                     }

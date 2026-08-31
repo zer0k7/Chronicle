@@ -62,6 +62,7 @@
             android:exported="false">
             <intent-filter>
                 <action android:name="io.chronicle.usagestats.ACTION_DAILY_NOTIFICATION" />
+                <action android:name="io.chronicle.usagestats.ACTION_MIDDAY_NOTIFICATION" />
             </intent-filter>
         </receiver>
 
@@ -188,6 +189,50 @@
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
+
+        <service
+            android:name=".service.NotificationRadarService"
+            android:label="@string/notification_radar_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
+        <!-- Quick Settings Tiles -->
+        <service
+            android:name=".service.ScreenTimeTileService"
+            android:icon="@drawable/ic_tile_screen_time"
+            android:label="@string/tile_screen_time_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".service.ZenFocusTileService"
+            android:icon="@drawable/ic_tile_zen_focus"
+            android:label="@string/tile_zen_focus_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
+
+        <service
+            android:name=".service.DataBurnTileService"
+            android:icon="@drawable/ic_tile_data_burn"
+            android:label="@string/tile_data_burn_label"
+            android:permission="android.permission.BIND_QUICK_SETTINGS_TILE"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.service.quicksettings.action.QS_TILE" />
+            </intent-filter>
+        </service>
 
     </application>
 

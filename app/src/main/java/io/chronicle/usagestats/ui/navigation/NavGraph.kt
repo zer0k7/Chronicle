@@ -30,11 +30,23 @@ import io.chronicle.usagestats.ui.timeline.TimelineScreen
 fun ChronicleNavGraph(
     navController: NavHostController,
     isOnboardingCompleted: Boolean,
-    widthSizeClass: WindowWidthSizeClass = WindowWidthSizeClass.Compact
+    widthSizeClass: WindowWidthSizeClass = WindowWidthSizeClass.Compact,
+    targetRoute: String? = null
 ) {
     val startDestination = if (isOnboardingCompleted) Screen.Timeline.route else Screen.Splash.route
 
     var currentRoute by rememberSaveable { mutableStateOf(Screen.Timeline.route) }
+
+    androidx.compose.runtime.LaunchedEffect(targetRoute, isOnboardingCompleted) {
+        if (targetRoute != null && isOnboardingCompleted) {
+            navController.navigate(targetRoute) {
+                popUpTo(Screen.Timeline.route) { saveState = true }
+                launchSingleTop = true
+                restoreState = true
+            }
+            currentRoute = targetRoute
+        }
+    }
 
     val showNavBar = currentRoute in listOf(
         Screen.Timeline.route,
