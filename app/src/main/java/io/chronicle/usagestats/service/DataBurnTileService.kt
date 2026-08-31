@@ -66,7 +66,7 @@ class DataBurnTileService : TileService() {
                 val summary = networkUsageDao.getDailySummary(startOfDay).first()
                 val settings = preferencesRepository.userSettingsFlow.first()
 
-                val mobileBytes = summary?.mobileBytes ?: 0L
+                val mobileBytes = summary?.totalMobileBytes ?: 0L
                 val formattedMobile = DataSizeUtils.formatBytes(mobileBytes)
                 val budgetBytes = settings.dailyDataBudgetMb * 1024L * 1024L
                 val isAtRisk = budgetBytes > 0 && mobileBytes >= budgetBytes

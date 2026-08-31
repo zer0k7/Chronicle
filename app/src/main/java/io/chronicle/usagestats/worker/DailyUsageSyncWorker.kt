@@ -8,6 +8,7 @@ import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import io.chronicle.usagestats.core.util.PermissionHelper
 import io.chronicle.usagestats.domain.usecase.SyncUsageDataUseCase
+import kotlinx.coroutines.flow.first
 
 @HiltWorker
 class DailyUsageSyncWorker @AssistedInject constructor(
@@ -31,9 +32,8 @@ class DailyUsageSyncWorker @AssistedInject constructor(
             io.chronicle.usagestats.service.ChronicleTileUpdater.updateAll(context)
 
             // Evaluate budget threshold warnings
-            val settings = kotlinx.coroutines.flow.firstOrNull(userPreferencesRepository.userSettingsFlow)
-            if (settings != null) {
-                if (settings.budgetAlertEnabled && settings.dailyGoalMinutes > 0) {
+            val settings = userPreferencesRepository.userSettingsFlow.first()
+            if (settings.budgetAlertEnabled && settings.dailyGoalMinutes > 0) {
                     val totalScreenTime = usageRepository.getTodayTotalScreenTimeMillis()
                     val goalMillis = settings.dailyGoalMinutes * 60 * 1000L
                     if (totalScreenTime >= goalMillis) {

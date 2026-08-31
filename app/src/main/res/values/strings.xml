@@ -508,7 +508,7 @@
     <string name="settings_notification_surge">Distraction Surge Alerts</string>
     <string name="settings_notification_surge_desc">Instant heads-up when notifications spike (&gt;30 pings/hr).</string>
     <string name="settings_notification_budget_warnings">Budget Milestone Warnings</string>
-    <string name="settings_notification_budget_warnings_desc">Alerts when crossing 80% and 100% of your daily screen time allowance.</string>
+    <string name="settings_notification_budget_warnings_desc" formatted="false">Alerts when crossing 80% and 100% of your daily screen time allowance.</string>
     <string name="settings_notification_radar">Notification Influx Radar</string>
     <string name="settings_notification_radar_desc">Track attention disruption, ping density, and bait-and-switch reflex triggers.</string>
 
