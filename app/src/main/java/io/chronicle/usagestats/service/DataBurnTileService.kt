@@ -90,6 +90,8 @@ class DataBurnTileService : TileService() {
         }
     }
 
+    @android.annotation.SuppressLint("StartActivityAndCollapseDeprecated")
+    @Suppress("DEPRECATION")
     override fun onClick() {
         super.onClick()
 
@@ -107,7 +109,7 @@ class DataBurnTileService : TileService() {
             )
             startActivityAndCollapse(pendingIntent)
         } else {
-            @Suppress("DEPRECATION")
+            // startActivityAndCollapse(PendingIntent) is unavailable below API 34; fallback to Intent overload
             startActivityAndCollapse(intent)
         }
     }
