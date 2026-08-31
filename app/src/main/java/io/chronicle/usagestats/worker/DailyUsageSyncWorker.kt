@@ -34,40 +34,39 @@ class DailyUsageSyncWorker @AssistedInject constructor(
             // Evaluate budget threshold warnings
             val settings = userPreferencesRepository.userSettingsFlow.first()
             if (settings.budgetAlertEnabled && settings.dailyGoalMinutes > 0) {
-                    val totalScreenTime = usageRepository.getTodayTotalScreenTimeMillis()
-                    val goalMillis = settings.dailyGoalMinutes * 60 * 1000L
-                    if (totalScreenTime >= goalMillis) {
-                        NotificationHelper.showBudgetThresholdNotification(
-                            context = context,
-                            percentage = 100,
-                            totalDurationMillis = totalScreenTime,
-                            goalMinutes = settings.dailyGoalMinutes
-                        )
-                    } else if (totalScreenTime >= (goalMillis * 0.8).toLong()) {
-                        NotificationHelper.showBudgetThresholdNotification(
-                            context = context,
-                            percentage = 80,
-                            totalDurationMillis = totalScreenTime,
-                            goalMinutes = settings.dailyGoalMinutes
-                        )
-                    }
-                }
-
-                // Ensure alarms are armed
-                if (settings.dailyNotificationEnabled) {
-                    NotificationHelper.scheduleDailyNotification(
-                        context,
-                        settings.dailyNotificationHour,
-                        settings.dailyNotificationMinute
+                val totalScreenTime = usageRepository.getTodayTotalScreenTimeMillis()
+                val goalMillis = settings.dailyGoalMinutes * 60 * 1000L
+                if (totalScreenTime >= goalMillis) {
+                    NotificationHelper.showBudgetThresholdNotification(
+                        context = context,
+                        percentage = 100,
+                        totalDurationMillis = totalScreenTime,
+                        goalMinutes = settings.dailyGoalMinutes
                     )
-                }
-                if (settings.middayNotificationEnabled) {
-                    NotificationHelper.scheduleMiddayNotification(context)
+                } else if (totalScreenTime >= (goalMillis * 0.8).toLong()) {
+                    NotificationHelper.showBudgetThresholdNotification(
+                        context = context,
+                        percentage = 80,
+                        totalDurationMillis = totalScreenTime,
+                        goalMinutes = settings.dailyGoalMinutes
+                    )
                 }
             }
 
+            // Ensure alarms are armed
+            if (settings.dailyNotificationEnabled) {
+                NotificationHelper.scheduleDailyNotification(
+                    context,
+                    settings.dailyNotificationHour,
+                    settings.dailyNotificationMinute
+                )
+            }
+            if (settings.middayNotificationEnabled) {
+                NotificationHelper.scheduleMiddayNotification(context)
+            }
+
             Result.success()
-        } catch (_: Exception) {
+        } catch (e: Exception) {
             Result.retry()
         }
     }
