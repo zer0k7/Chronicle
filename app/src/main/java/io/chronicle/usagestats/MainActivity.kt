@@ -20,6 +20,9 @@ import io.chronicle.usagestats.domain.model.UserSettings
 import io.chronicle.usagestats.ui.components.UpdateDialog
 import io.chronicle.usagestats.ui.navigation.ChronicleNavGraph
 import io.chronicle.usagestats.ui.theme.ChronicleTheme
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -58,7 +61,7 @@ class MainActivity : ComponentActivity() {
 
         try {
             // Ensure app limit monitor service is running if limits are configured
-            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+            lifecycleScope.launch(Dispatchers.IO) {
                 if (appLimitDao.getEnabledLimitCount() > 0) {
                     io.chronicle.usagestats.service.AppLimitMonitorService.start(this@MainActivity)
                 }
