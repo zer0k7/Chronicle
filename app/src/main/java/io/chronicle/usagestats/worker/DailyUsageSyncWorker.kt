@@ -17,7 +17,8 @@ class DailyUsageSyncWorker @AssistedInject constructor(
     private val syncUsageDataUseCase: SyncUsageDataUseCase,
     private val syncDataUsageUseCase: io.chronicle.usagestats.domain.usecase.SyncDataUsageUseCase,
     private val userPreferencesRepository: io.chronicle.usagestats.data.local.preferences.UserPreferencesRepository,
-    private val usageRepository: io.chronicle.usagestats.domain.repository.UsageRepository
+    private val usageRepository: io.chronicle.usagestats.domain.repository.UsageRepository,
+    private val appLimitDao: io.chronicle.usagestats.data.local.dao.AppLimitDao
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result {
@@ -30,6 +31,12 @@ class DailyUsageSyncWorker @AssistedInject constructor(
             syncDataUsageUseCase.syncDate(System.currentTimeMillis())
             io.chronicle.usagestats.ui.widget.ChronicleWidgetUpdater.updateAll(context)
             io.chronicle.usagestats.service.ChronicleTileUpdater.updateAll(context)
+
+            // Ensure app limit monitor service is running if limits are configured
+            val enabledLimitCount = appLimitDao.getEnabledLimitCount()
+            if (enabledLimitCount > 0) {
+                io.chronicle.usagestats.service.AppLimitMonitorService.start(context)
+            }
 
             // Evaluate budget threshold warnings
             val settings = userPreferencesRepository.userSettingsFlow.first()

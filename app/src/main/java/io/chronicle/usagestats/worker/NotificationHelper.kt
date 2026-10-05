@@ -376,10 +376,31 @@ object NotificationHelper {
 
     fun cancelDailyNotification(context: Context) {
         cancelAlarm(context, Constants.ACTION_DAILY_NOTIFICATION, Constants.NOTIFICATION_DAILY_ID)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.cancel(Constants.NOTIFICATION_DAILY_ID)
     }
 
     fun cancelMiddayNotification(context: Context) {
         cancelAlarm(context, Constants.ACTION_MIDDAY_NOTIFICATION, Constants.NOTIFICATION_MIDDAY_ID)
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.cancel(Constants.NOTIFICATION_MIDDAY_ID)
+    }
+
+    fun cancelDistractionSurgeNotification(context: Context) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.cancel(Constants.NOTIFICATION_SURGE_ID)
+    }
+
+    fun cancelBudgetNotification(context: Context) {
+        val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager
+        notificationManager?.cancel(Constants.NOTIFICATION_BUDGET_ID)
+    }
+
+    fun cancelAllNotifications(context: Context) {
+        cancelDailyNotification(context)
+        cancelMiddayNotification(context)
+        cancelDistractionSurgeNotification(context)
+        cancelBudgetNotification(context)
     }
 
     private fun cancelAlarm(context: Context, action: String, requestCode: Int) {

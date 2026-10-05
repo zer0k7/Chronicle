@@ -125,12 +125,22 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    fun setDistractionSurgeAlertEnabled(enabled: Boolean) {
-        viewModelScope.launch { userPreferencesRepository.updateDistractionSurgeAlertEnabled(enabled) }
+    fun setDistractionSurgeAlertEnabled(enabled: Boolean, context: Context? = null) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateDistractionSurgeAlertEnabled(enabled)
+            if (!enabled && context != null) {
+                NotificationHelper.cancelDistractionSurgeNotification(context)
+            }
+        }
     }
 
-    fun setBudgetAlertEnabled(enabled: Boolean) {
-        viewModelScope.launch { userPreferencesRepository.updateBudgetAlertEnabled(enabled) }
+    fun setBudgetAlertEnabled(enabled: Boolean, context: Context? = null) {
+        viewModelScope.launch {
+            userPreferencesRepository.updateBudgetAlertEnabled(enabled)
+            if (!enabled && context != null) {
+                NotificationHelper.cancelBudgetNotification(context)
+            }
+        }
     }
 
     fun setNotificationRadarEnabled(enabled: Boolean) {

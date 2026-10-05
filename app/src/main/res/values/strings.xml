@@ -15,9 +15,22 @@
     <string name="onboarding_get_started">Get Started</string>
 
     <string name="onboarding_usage_title">Usage Access</string>
-    <string name="onboarding_usage_desc">Chronicle requires system usage access to accurately read per-app active time and launch counts. Your data is processed locally and never leaves your phone.</string>
-    <string name="onboarding_usage_grant_button">Grant Usage Access</string>
+    <string name="onboarding_usage_desc">Chronicle requires system usage access to accurately calculate per-app active screen time, session intervals, and daily timelines.</string>
+    <string name="onboarding_usage_privacy_badge">100% Offline &amp; Private</string>
+    <string name="onboarding_usage_privacy_desc">Zero telemetry, zero cloud tracking. Your usage statistics are calculated strictly on your device and never leave your phone.</string>
+    <string name="onboarding_usage_how_to_title">How to enable in 2 steps:</string>
+    <string name="onboarding_usage_step_1">Tap Grant Usage Access below</string>
+    <string name="onboarding_usage_step_2">Select Chronicle and turn the toggle switch ON</string>
+    <string name="onboarding_usage_restricted_title">If the toggle switch is greyed out:</string>
+    <string name="onboarding_usage_restricted_desc">Android security may mark sideloaded apps as restricted. Tap the 3 dots in the top-right corner of App Details and select Allow restricted settings, then turn the toggle ON.</string>
+    <string name="onboarding_usage_open_app_info">Open App Details (for 3-dot menu)</string>
+    <string name="onboarding_usage_grant_button">Grant Usage Access (1-Tap)</string>
     <string name="onboarding_usage_waiting">Waiting for permission…</string>
+    <string name="onboarding_usage_granted_success">Usage access is active and verified.</string>
+
+    <string name="settings_permission_usage_guide_title">Usage Access Setup</string>
+    <string name="settings_permission_radar_guide_title">Attention Radar Setup</string>
+    <string name="settings_permission_open_settings">Open System Settings</string>
 
     <string name="onboarding_notification_title">Daily Notifications</string>
     <string name="onboarding_notification_desc">Receive a concise daily summary of your screen time and active apps delivered at your preferred time.</string>
@@ -458,6 +471,10 @@
 
     <string name="limit_monitor_notification_title">Chronicle Focus Guard</string>
     <string name="limit_monitor_notification_text">App limits are actively enforced</string>
+    <string name="app_limit_exceeded_title">%1$s Limit Exceeded</string>
+    <string name="app_limit_exceeded_desc">Your daily limit of %1$d minutes has been reached.</string>
+    <string name="notification_channel_blocker">App Limit Enforcement</string>
+    <string name="notification_channel_blocker_desc">Full-screen alerts and blocker triggers for exceeded app limits.</string>
 
     <!-- Home Screen Widgets Labels -->
     <string name="widget_label_device_unlocks">Device Unlocks</string>

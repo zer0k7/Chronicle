@@ -171,13 +171,16 @@ Chronicle is built according to Modern Android Architecture standards, enforcing
 
 | Permission | Scope & Purpose |
 |---|---|
-| `PACKAGE_USAGE_STATS` | System permission granting read access to foreground session timestamps, launches, and NetworkStats telemetry. |
+| `PACKAGE_USAGE_STATS` | System permission granting read access to foreground session timestamps, launches, and usage telemetry. |
 | `POST_NOTIFICATIONS` | Required on Android 13+ to deliver scheduled daily summaries, live speed meter, and reality-check alerts. |
 | `QUERY_ALL_PACKAGES` | Allows mapping package identifiers to installed application labels and high-resolution icons. |
-| `SCHEDULE_EXACT_ALARM` | Guarantees deterministic notification execution at configured user times. |
-| `READ_MEDIA_IMAGES` | Allows saving generated report infographics directly to the system photo gallery. |
+| `SCHEDULE_EXACT_ALARM` & `USE_EXACT_ALARM` | Guarantees deterministic notification execution at configured user times. |
 | `ACCESS_NETWORK_STATE` | Allows querying active network interface states for Wi-Fi and Mobile data monitoring. |
-| `FOREGROUND_SERVICE_DATA_SYNC` | Allows running the optional real-time network speed meter in the notification shade. |
+| `FOREGROUND_SERVICE_DATA_SYNC` | Allows running the optional real-time network speed meter and app limit monitor. |
+| `SYSTEM_ALERT_WINDOW` | Allows displaying the full-screen blocker overlay when an app limit is reached. |
+| `BIND_NOTIFICATION_LISTENER_SERVICE` | Optional access for Attention Fragmentation Radar and bait-and-switch reflex detection. |
+| `REQUEST_INSTALL_PACKAGES` | Allows installing downloaded Chronicle updates directly from within the app. |
+| `WRITE_EXTERNAL_STORAGE` | Scoped to Android 8.0–9.0 (API 26–28) for legacy image export; modern Android uses Scoped Storage with zero storage permissions. |
 
 ---
 

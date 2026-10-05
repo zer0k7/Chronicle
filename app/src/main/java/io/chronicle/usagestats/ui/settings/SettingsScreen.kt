@@ -25,7 +25,10 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
+import android.os.Build
+import androidx.compose.material.icons.outlined.HourglassEmpty
+import androidx.compose.material.icons.outlined.NotificationsActive
+import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.outlined.Accessibility
 import androidx.compose.material.icons.outlined.Check
 import androidx.compose.material.icons.outlined.ChevronRight
@@ -97,6 +100,24 @@ fun SettingsScreen(
     var showDailyDataBudgetDialog by remember { mutableStateOf(false) }
     var showMonthlyDataBudgetDialog by remember { mutableStateOf(false) }
     var showBillingCycleDialog by remember { mutableStateOf(false) }
+    var showUsageGuideDialog by remember { mutableStateOf(false) }
+    var showRadarGuideDialog by remember { mutableStateOf(false) }
+
+    if (showUsageGuideDialog) {
+        UsageAccessGuideDialog(
+            onDismiss = { showUsageGuideDialog = false },
+            onOpenSettings = { PermissionHelper.openUsageStatsSettings(context) },
+            onOpenAppDetails = { PermissionHelper.openAppSettings(context) }
+        )
+    }
+
+    if (showRadarGuideDialog) {
+        NotificationRadarGuideDialog(
+            onDismiss = { showRadarGuideDialog = false },
+            onOpenSettings = { PermissionHelper.openNotificationListenerSettings(context) },
+            onOpenAppDetails = { PermissionHelper.openAppSettings(context) }
+        )
+    }
 
     if (showDailyDataBudgetDialog) {
         DailyDataBudgetDialog(
@@ -481,7 +502,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_notification_surge),
                 description = stringResource(R.string.settings_notification_surge_desc),
                 checked = settings.distractionSurgeAlertEnabled,
-                onCheckedChange = { viewModel.setDistractionSurgeAlertEnabled(it) }
+                onCheckedChange = { viewModel.setDistractionSurgeAlertEnabled(it, context) }
             )
         }
 
@@ -490,7 +511,7 @@ fun SettingsScreen(
                 title = stringResource(R.string.settings_notification_budget_warnings),
                 description = stringResource(R.string.settings_notification_budget_warnings_desc),
                 checked = settings.budgetAlertEnabled,
-                onCheckedChange = { viewModel.setBudgetAlertEnabled(it) }
+                onCheckedChange = { viewModel.setBudgetAlertEnabled(it, context) }
             )
         }
 
@@ -700,10 +721,17 @@ fun SettingsScreen(
         }
 
         item {
+            val isUsageGranted = PermissionHelper.hasUsageStatsPermission(context)
             PermissionStatusRow(
                 title = stringResource(R.string.settings_permission_usage),
-                isGranted = PermissionHelper.hasUsageStatsPermission(context),
-                onClick = { PermissionHelper.openUsageStatsSettings(context) }
+                isGranted = isUsageGranted,
+                onClick = {
+                    if (isUsageGranted) {
+                        PermissionHelper.openUsageStatsSettings(context)
+                    } else {
+                        showUsageGuideDialog = true
+                    }
+                }
             )
         }
         item {
@@ -721,10 +749,17 @@ fun SettingsScreen(
             )
         }
         item {
+            val isRadarGranted = PermissionHelper.hasNotificationListenerPermission(context)
             PermissionStatusRow(
                 title = stringResource(R.string.settings_notification_radar),
-                isGranted = PermissionHelper.hasNotificationListenerPermission(context),
-                onClick = { PermissionHelper.openNotificationListenerSettings(context) }
+                isGranted = isRadarGranted,
+                onClick = {
+                    if (isRadarGranted) {
+                        PermissionHelper.openNotificationListenerSettings(context)
+                    } else {
+                        showRadarGuideDialog = true
+                    }
+                }
             )
         }
 
@@ -1157,6 +1192,186 @@ private fun BillingCycleDayDialog(
                     valueRange = 1f..31f,
                     steps = 29
                 )
+            }
+        }
+    )
+}
+
+@Composable
+private fun UsageAccessGuideDialog(
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenAppDetails: () -> Unit
+) {
+    ChronicleDialog(
+        title = stringResource(R.string.settings_permission_usage_guide_title),
+        icon = Icons.Outlined.HourglassEmpty,
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(R.string.settings_permission_open_settings),
+        onPrimaryClick = {
+            onOpenSettings()
+            onDismiss()
+        },
+        secondaryButtonText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            stringResource(R.string.onboarding_usage_open_app_info)
+        } else {
+            stringResource(android.R.string.cancel)
+        },
+        onSecondaryClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                onOpenAppDetails()
+            }
+            onDismiss()
+        },
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = stringResource(R.string.onboarding_usage_privacy_desc),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "1. " + stringResource(R.string.onboarding_usage_step_1),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "2. " + stringResource(R.string.onboarding_usage_step_2),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = stringResource(R.string.onboarding_usage_restricted_title),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.onboarding_usage_restricted_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    )
+}
+
+@Composable
+private fun NotificationRadarGuideDialog(
+    onDismiss: () -> Unit,
+    onOpenSettings: () -> Unit,
+    onOpenAppDetails: () -> Unit
+) {
+    ChronicleDialog(
+        title = stringResource(R.string.settings_permission_radar_guide_title),
+        icon = Icons.Outlined.NotificationsActive,
+        onDismissRequest = onDismiss,
+        primaryButtonText = stringResource(R.string.settings_permission_open_settings),
+        onPrimaryClick = {
+            onOpenSettings()
+            onDismiss()
+        },
+        secondaryButtonText = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            stringResource(R.string.onboarding_usage_open_app_info)
+        } else {
+            stringResource(android.R.string.cancel)
+        },
+        onSecondaryClick = {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                onOpenAppDetails()
+            }
+            onDismiss()
+        },
+        content = {
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.12f),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Text(
+                            text = "Only notification timestamps and source apps are recorded. Messages, titles, and sender identities are never accessed or stored.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "1. Tap Open System Settings below to open Notification Access.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+                Text(
+                    text = "2. Select Chronicle and switch the toggle ON.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    Surface(
+                        shape = RoundedCornerShape(10.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(modifier = Modifier.padding(10.dp)) {
+                            Text(
+                                text = stringResource(R.string.onboarding_usage_restricted_title),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                text = stringResource(R.string.onboarding_usage_restricted_desc),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
             }
         }
     )

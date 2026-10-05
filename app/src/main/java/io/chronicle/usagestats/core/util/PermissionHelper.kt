@@ -69,17 +69,13 @@ object PermissionHelper {
     }
 
     fun hasStoragePermission(context: Context): Boolean {
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.READ_MEDIA_IMAGES
-            ) == PackageManager.PERMISSION_GRANTED
-        } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+        return if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
             ContextCompat.checkSelfPermission(
                 context,
                 Manifest.permission.WRITE_EXTERNAL_STORAGE
             ) == PackageManager.PERMISSION_GRANTED
         } else {
+            // Android 10+ uses Scoped Storage (MediaStore & FileProvider cache require no storage permissions)
             true
         }
     }

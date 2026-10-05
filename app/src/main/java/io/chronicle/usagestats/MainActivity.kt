@@ -31,6 +31,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var appUpdateManager: AppUpdateManager
 
+    @Inject
+    lateinit var appLimitDao: io.chronicle.usagestats.data.local.dao.AppLimitDao
+
     private var targetRouteState = androidx.compose.runtime.mutableStateOf<String?>(null)
 
     override fun onNewIntent(intent: Intent) {
@@ -51,6 +54,15 @@ class MainActivity : ComponentActivity() {
         try {
             // Check for updates on every app launch in background
             appUpdateManager.checkForUpdates(silent = true)
+        } catch (_: Exception) { }
+
+        try {
+            // Ensure app limit monitor service is running if limits are configured
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
+                if (appLimitDao.getEnabledLimitCount() > 0) {
+                    io.chronicle.usagestats.service.AppLimitMonitorService.start(this@MainActivity)
+                }
+            }
         } catch (_: Exception) { }
 
         setContent {
